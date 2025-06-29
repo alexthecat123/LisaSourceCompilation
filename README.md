@@ -5,8 +5,6 @@ All the info needed to compile the Apple Lisa's operating system (LOS) from sour
 # Background
 In January of 2023, Apple released the source code to the Lisa Office System to celebrate the Lisa's 40th birthday. It's a whole lot of code though (20+ MB over 1000+ files), so nobody had undertaken the task of trying to compile it all. Until January of 2025, when I started what ended up being a 5-month endeavor that culminated in a fully-working copy of the Lisa OS and its apps, all freshly compiled in 2025! And this repo contains (almost) everything that you'll need to replicate it yourself!
 
-ADD BUILD SCRIPTS!
-
 # What's in this repo?
 Four things!
 - In the src directory, you can find all the files that I created as part of the build process. This includes build scripts and new source files that I had to make. The directory structure in SRC is identical to the structure in which these files should be organized on the actual Lisa hard disk. These are all included in the disk image I'm about to talk about; I just put them here too for easy viewing in a modern text editor.
@@ -563,3 +561,6 @@ We've talked about a bunch of files throughout this document, let's conclude thi
 | SYSTEM.UNPACK                  | A packtable containing code often shared between other files. Allows for file compression. We have to steal this from an existing LOS installation. |
 | TKLIB.OBJ                      | Part 1 of the Lisa ToolKit API intrinsic library. |
 | TK2LIB.OBJ                     | Part 2 of the Lisa ToolKit API intrinsic library. |
+
+# Changelog
+- 6/28/2025 - Initial Release
