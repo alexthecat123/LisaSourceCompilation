@@ -1,13 +1,11 @@
 # Lisa OS Source Code Compilation
 All the info needed to compile the Apple Lisa's operating system (LOS) from source!
+<img width="1081" alt="SCR-20250628-snpg" src="https://github.com/user-attachments/assets/1ca63c0d-61a0-4f4d-a1a9-7089b22332e7" />
 
 # Background
 In January of 2023, Apple released the source code to the Lisa Office System to celebrate the Lisa's 40th birthday. It's a whole lot of code though (20+ MB over 1000+ files), so nobody had undertaken the task of trying to compile it all. Until January of 2025, when I started what ended up being a 5-month endeavor that culminated in a fully-working copy of the Lisa OS and its apps, all freshly compiled in 2025! And this repo contains (almost) everything that you'll need to replicate it yourself!
 
 ADD BUILD SCRIPTS!
-
-ADD PICTURES!
-
 
 # What's in this repo?
 Four things!
@@ -351,12 +349,13 @@ I had a couple suggestions to distribute the changes in the form of xdiffs, but 
 
 ## Character-Related Fixes
 - In APHP/HP.TEXT, find "divide sign" and replace the character in the quotes with the division sign (÷). Now make sure the character on the next line is a forward slash, and replace the character on the line below that with the Lisa "diamond" character. Also find "A-A" and delete everything following it on that line. Then retype the rest of the line as " A.A A–A A'A".
-- In APHP/T12ALERT.TEXT, there are several things to change under the MenuBuzz heading, so just make it look like the picture below. You'll need to add diamond, checkmark (just use square root), and division sign characters.
+- In APHP/T12ALERT.TEXT, there are several things to change under the MenuBuzz heading, so just make it look like the picture below. <img width="152" alt="T12ALERT" src="https://github.com/user-attachments/assets/ac7363c0-710e-4185-9098-667fc4b5119c" />
+
 - In APLP/T8ALERT.TEXT, find "A-A" and then delete the rest of the line after that text. Now retype the rest of the line as " A'A A-A".
 - In APLL/DBCONVERT.TEXT, search for "sterling=" and replace the bad character in the quotes with the British pound symbol (option-3). Do the same with the Yen symbol on the next line, and a non-breaking space on the next line after that. Type a non-breaking space by hitting option-spacebar.
 - In APLL/T5LM.TEXT, search for "A-A" and delete everything that follows it on that line. Then retype the rest of the line as " A-A A'A A.A".
-- In APLT/CONVERT.TEXT, make the arrays look like this picture: PICTURE
-- In APLT/INIT.TEXT, search for "AlphaNum:=" and make the array look like this: PICTURE
+- In APLT/CONVERT.TEXT, make the arrays look like this picture: <img width="749" alt="APLT-CONVERT" src="https://github.com/user-attachments/assets/fe8b5661-34ea-4ffd-95e4-ec08fe7dc620" />
+- In APLT/INIT.TEXT, search for "AlphaNum:=" and make the array look like this: <img width="485" alt="APLT-INIT" src="https://github.com/user-attachments/assets/5b0af66f-f14a-4b0a-ba7c-a2bc502afd78" />
 - In APLW/T1MENUS.TEXT, search for "6". Then replace the last character on the "Format" line below it with the "paragraph" symbol (option-7). Do the same with the last character on the "Single Space", "1-1/2 Space", "Double Space", and "Triple Space" lines a little further down.
 - In APLW/T1ALERT.TEXT, search for "2 stop alert". Then go 4 lines down and replace the character between "on" and "off" with a "-". Now search for "8 stop alert", go to the next line, and delete everything after the word "of". Replace it with ""^1."" (include the inner set of quotes in what you type). Now search for "10 caution cancel alert", go to the next line, and surround the "^2" with quotes just like we did with the "^1.". Now search for "A-A" and then delete the rest of the line after that text. Now retype the rest of the line as " A-A A.A A'A". Now scroll down a couple lines to "14 stop alert" and do the same thing where we surround the "^1." on the next line with quotes. Next, search for "58 note alert", "60 note alert", and "63 ask alert" and do the same thing for the "^1" entries on the following lines. Now search for "71 wait alert" and replace the first character in the "copyright" line 2 lines below it with the copyright symbol. Scroll down a few more lines to "74 wait alert" and replace the character 2 lines down between "Apple" and "period" with a "-". Do the same with "76 wait alert" and "78 wait alert". Now scroll down to "81 note alert" and do the thing where we surround "^1" with quotes. Then go to "83 note alert" and surround "Put In Dictionary" with quotes. Then scroll to "85 wait alert" and add the "-" between "Apple" and "period". Now find "96 stop medium+alert" and replace the character in between "Chapter" and "2" a couple lines down with a space. Then search for "first part", go up 2 lines to "Set Aside", and replace the last character on this line with a double quote ("). Scroll down a little to "913", go to the next line, and replace its entire contents, with another double quote. Now scroll down a bit more to "Set Aside Clipboard" and replace the 2 characters around "Clipboard" with quotes. Scroll down some more to the Format menu and add paragraph (option-7) characters in the same places that we did in APLW/T1MENUS.TEXT. Also change the character between both instances of "1" and "1/2 Space" to a "-". Now scroll down a bit more to the line "Preview Pages" and change the next line to read "Don't Preview Pages". And then search for "Set Decimal" and surround the "." on the first line and the "," on the second line with quotes. And we're FINALLY done with this horrible file!!!
 - In APLD/T4ALERT_MENUS.TEXT, find "A'A" and delete everything following that text on the line. Then retype the rest of the line as " A-A A-A A'A A.A".
