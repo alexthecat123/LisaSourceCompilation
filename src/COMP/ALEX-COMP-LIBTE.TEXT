@@ -1,0 +1,1 @@
+$EXEC{Compiles the LIBTE library}{Delete anything left over from prev build}F{ilemgr}D{elete}LIBTE/TEENV.OBJY{es}D{elete}LIBTE/LCUT.OBJY{es}D{elete}LIBTE/TM.OBJY{es}Q{uit}$SUBMIT BUILD/COMP(LIBTE/TEENV)$SUBMIT BUILD/COMP(LIBTE/LCUT)$SUBMIT BUILD/COMP(LIBTE/TM)$ENDEXEC

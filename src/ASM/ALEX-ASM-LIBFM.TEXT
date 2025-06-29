@@ -1,0 +1,1 @@
+$EXEC{Assembles the LIBFM library}{Delete anything left over from a previous build}F{ilemgr}D{elete}LIBFM/FM68K.OBJY{es}Q{uit}{Assemble the source files}$SUBMIT BUILD/ASSEMB(LIBFM/FM68K,,FMwork)$ENDEXEC

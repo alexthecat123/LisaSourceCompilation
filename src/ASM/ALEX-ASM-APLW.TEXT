@@ -1,0 +1,1 @@
+$EXEC{Assembles LisaWrite source files}{Delete anything left over from prev build}F{ilemgr}D{elete}APLW/DM68K.OBJY{es}D{elete}APLW/FASTGEN.OBJY{es}D{elete}APLW/SP/UTIL.OBJY{es}Q{uit}$SUBMIT BUILD/ASSEMB(APLW/DM68K)$SUBMIT BUILD/ASSEMB(APLW/FASTGEN)$SUBMIT BUILD/ASSEMB(APLW/SP/UTIL)$ENDEXEC

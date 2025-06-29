@@ -1,0 +1,1 @@
+$EXEC{Assembles the LIBHW library}{Delete anything left over from a previous build}F{ilemgr}D{elete}LIBHW/DRIVERX.OBJY{es}D{elete}LIBHW/HWINTL.OBJY{es}Q{uit}{Assemble the source files}$SUBMIT BUILD/ASSEMB(LIBHW/DRIVERS,LIBHW/DRIVERX)$SUBMIT BUILD/ASSEMB(LIBHW/HWINTL,,Drivers)$ENDEXEC

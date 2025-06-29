@@ -1,0 +1,1 @@
+$EXEC{Compiles the LIBUT library}{Delete anything left over from prev build}F{ilemgr}D{elete}LIBUT/UUNIVTEXT.OBJY{es}Q{uit}$SUBMIT BUILD/COMP(LIBUT/UUNIVTEXT)$ENDEXEC

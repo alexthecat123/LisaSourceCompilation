@@ -1,0 +1,1 @@
+$EXEC{Compiles the LIBFP library}{Delete anything left over from a previous build}F{ilemgr}D{elete}LIBFP/NEWFPLIB.OBJY{es}D{elete}LIBFP/REALPASLIB.OBJY{es}D{elete}LIBFP/MATHLIB.OBJY{es}Q{uit}{Compile the source files}$SUBMIT BUILD/COMP(LIBFP/NEWFPLIB)$SUBMIT BUILD/COMP(LIBFP/REALPASLIB)$SUBMIT BUILD/COMP(LIBFP/MATHLIB)$ENDEXEC

@@ -1,0 +1,1 @@
+$EXEC{Builds the LOS installer and makes the 5 LOS install disks}$SUBMIT ALEX/MAKE/APIN$DOIT$CLEAR SCREEN$IF %0='' THEN    $SUBMIT ALEX/MAKE/DISKS    $DOIT$ELSE$ENDIF$ENDEXEC

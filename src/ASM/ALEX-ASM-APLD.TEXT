@@ -1,0 +1,1 @@
+$EXEC{Assembles LisaDraw source files}{Delete anything left over from prev build}F{ilemgr}D{elete}APLD/68K.OBJY{es}Q{uit}$SUBMIT BUILD/ASSEMB(APLD/68K)$ENDEXEC

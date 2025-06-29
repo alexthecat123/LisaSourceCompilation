@@ -1,0 +1,1 @@
+$EXEC{Compiles the LIBFE library}{Delete anything left over from a previous build}F{ilemgr}D{elete}LIBFE/FEDEC.OBJY{es}D{elete}LIBFE/FLDUT.OBJY{es}D{elete}LIBFE/FLD.MAIN.OBJY{es}Q{uit}{Compile the source files}$SUBMIT BUILD/COMP(LIBFE/FEDEC)$SUBMIT BUILD/COMP(LIBFE/FLDUT)$SUBMIT BUILD/COMP(LIBFE/FLD.MAIN)$ENDEXEC

@@ -1,0 +1,1 @@
+$EXEC{Assembles LisaCalc source files}{Delete anything left over from prev build}F{ilemgr}D{elete}APLC/MM/LCASM.OBJY{es}Q{uit}$SUBMIT BUILD/ASSEMB(APLC/MM/LCASM)$ENDEXEC

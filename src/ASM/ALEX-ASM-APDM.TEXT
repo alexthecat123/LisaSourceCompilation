@@ -1,0 +1,1 @@
+$EXEC{Assembles LisaDesk source files}{Delete anything left over from prev build}F{ilemgr}D{elete}APDM/ASM.OBJY{es}Q{uit}$SUBMIT BUILD/ASSEMB(APDM/ASM)$ENDEXEC

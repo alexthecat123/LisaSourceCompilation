@@ -1,0 +1,1 @@
+$EXEC{Compiles the LIBFC library}{Delete anything left over from a previous build}F{ilemgr}D{elete}LIBFC/FILERCOMM.OBJY{es}D{elete}LIBFC/SYS1LOCK.OBJY{es}Q{uit}{Compile the source files}$SUBMIT BUILD/COMP(LIBFC/FILERCOMM)$SUBMIT BUILD/COMP(LIBFC/SYS1LOCK)$ENDEXEC

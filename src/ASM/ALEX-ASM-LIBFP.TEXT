@@ -1,0 +1,1 @@
+$EXEC{Assembles the LIBFP library}{Delete anything left over from a previous build}F{ilemgr}D{elete}LIBFP/NEWFPSUB.OBJY{es}D{elete}LIBFP/STR2DEC.OBJY{es}Q{uit}{Assemble the source files}$SUBMIT BUILD/ASSEMB(LIBFP/NEWFPSUB)$SUBMIT BUILD/ASSEMB(LIBFP/STR2DEC,,str2dec)$ENDEXEC

@@ -1,0 +1,1 @@
+$EXEC{Compiles the LIBPM library}{Delete anything left over from prev build}F{ilemgr}D{elete}LIBPM/PMDECL.OBJY{es}D{elete}LIBPM/PMM.OBJY{es}Q{uit}$SUBMIT BUILD/COMP(LIBPM/PMDECL)$SUBMIT BUILD/COMP(LIBPM/PMM)$ENDEXEC

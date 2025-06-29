@@ -1,0 +1,1 @@
+$EXEC{Assembles the LIBAM library}{Delete anything left over from a previous build}F{ilemgr}D{elete}LIBAM/ALERTPROCS.OBJY{es}Q{uit}{Assemble the source files}$SUBMIT BUILD/ASSEMB(LIBAM/ALERTPROCS,,alert)$ENDEXEC

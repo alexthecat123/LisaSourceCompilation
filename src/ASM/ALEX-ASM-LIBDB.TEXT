@@ -1,0 +1,1 @@
+$EXEC{Assembles the LIBDB library}{Delete anything left over from a previous build}F{ilemgr}D{elete}LIBDB/ASMHEAP.OBJY{es}D{elete}LIBDB/QASM.OBJY{es}D{elete}LIBDB/QSORT.OBJY{es}Q{uit}{Assemble the source files}$SUBMIT BUILD/ASSEMB(LIBDB/ASMHEAP)$SUBMIT BUILD/ASSEMB(LIBDB/QASM)$SUBMIT BUILD/ASSEMB(LIBDB/QSORT)$ENDEXEC

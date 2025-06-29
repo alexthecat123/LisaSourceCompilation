@@ -1,0 +1,1 @@
+$EXEC{Links the LIBAM library}L{inker}LIBAM/ALERTGEN {Object code}IOSPASLIB        {Libraries}SYS1LIB                           {No more input files}                           {No listing file}PROGS/ALERTGEN_OLD1982     {Output executable}$ENDEXEC

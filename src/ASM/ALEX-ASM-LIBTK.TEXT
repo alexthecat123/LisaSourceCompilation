@@ -1,0 +1,1 @@
+$EXEC{Assembles the LIBTK library}{Delete anything left over from prev build}F{ilemgr}D{elete}LIBTK/XFER.OBJY{es}Q{uit}$SUBMIT BUILD/ASSEMB(LIBTK/XFER)$ENDEXEC

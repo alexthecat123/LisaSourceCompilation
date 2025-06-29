@@ -1,0 +1,1 @@
+$EXEC{Compiles the LIBAM library}{Delete anything left over from a previous build}F{ilemgr}D{elete}LIBAM/ALERTMGR.OBJY{es}D{elete}LIBAM/ALERTGEN.OBJY{es}Q{uit}{Compile the source files}$SUBMIT BUILD/COMP(LIBAM/ALERTMGR)$SUBMIT BUILD/COMP(LIBAM/ALERTGEN)$ENDEXEC

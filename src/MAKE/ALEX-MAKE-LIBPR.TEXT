@@ -1,0 +1,1 @@
+$EXEC{Builds the LIBPR library}{Break its build into 4 steps: prlib itself, the}{daisywheel driver, the canon driver, and the c-itoh driver}$SUBMIT ALEX/MAKE/LIBPR_PRLIB$SUBMIT ALEX/MAKE/LIBPR_DAISY$SUBMIT ALEX/MAKE/LIBPR_CANON$SUBMIT ALEX/MAKE/LIBPR_CITOH$ENDEXEC

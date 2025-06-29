@@ -1,0 +1,1 @@
+$EXEC{Compiles the LIBPR - DAISY driver}{Delete anything left over from prev build}F{ilemgr}D{elete}LIBPR/DWDLG.OBJY{es}D{elete}LIBPR/DAISYWHEEL.OBJY{es}Q{uit}$SUBMIT BUILD/COMP(LIBPR/DWDLG)$SUBMIT BUILD/COMP(LIBPR/DAISYWHEEL)$ENDEXEC
