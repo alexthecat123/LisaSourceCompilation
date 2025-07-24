@@ -7,10 +7,10 @@ In January of 2023, Apple released the source code to the Lisa Office System to 
 
 # What's in this repo?
 Four things!
-- In the src directory, you can find all the files that I created as part of the build process. This includes build scripts and new source files that I had to make. The directory structure in SRC is identical to the structure in which these files should be organized on the actual Lisa hard disk. These are all included in the disk image I'm about to talk about; I just put them here too for easy viewing in a modern text editor.
-- In the scripts directory, you'll find two scripts that manipulate the source files on your modern computer. We'll go over what they do later.
-- LOS Compilation Base.image.zip is a disk image compatible with ESProFile, Cameo/Aphid, and ArduinoFile that contains everything that I can possibly provide to get you started with compiling LOS without violating Apple's license agreement. Of course, unzip it before you do anything with it! This disk image has stock LOS 3.0 and the Workshop installed, as well as all my build scripts, new source files I had to create, my "incredibly beautiful" application icons, and a couple programs like ICONEDIT that I had to grab from other Lisa disks, as well as plenty of disk space for all the source files you'll have to copy over and the object code that gets generated. You can use the raw-to-dc42 tool that comes with LisaEm to convert this to a DC42 image that you can actually mount and use in LisaEm.
-- glue.c is a replacement for LisaEm's standard glue.c that will allow your custom copy of LOS to function in LisaEm, even after you've replaced the stock copy of SYSTEM.OS with your own. We'll talk about why this is necessary later.
+- In the ```src``` directory, you can find all the files that I created as part of the build process. This includes build scripts and new source files that I had to make. The directory structure in ```src``` is identical to the structure in which these files should be organized on the actual Lisa hard disk. These are all included in the disk image I'm about to talk about; I just put them here too for easy viewing in a modern text editor.
+- In the ```scripts``` directory, you'll find two scripts that manipulate the source files on your modern computer. We'll go over what they do later.
+- ```LOS Compilation Base.image.zip``` is a disk image compatible with ESProFile, Cameo/Aphid, and ArduinoFile that contains everything that I can possibly provide to get you started with compiling LOS without violating Apple's license agreement. Of course, unzip it before you do anything with it! This disk image has stock LOS 3.0 and the Workshop installed, as well as all my build scripts, new source files I had to create, my "incredibly beautiful" application icons, and a couple programs like ICONEDIT that I had to grab from other Lisa disks, as well as plenty of disk space for all the source files you'll have to copy over and the object code that gets generated. You can use the raw-to-dc42 tool that comes with LisaEm to convert this to a DC42 image that you can actually mount and use in LisaEm.
+- ```glue.c``` is a replacement for LisaEm's standard glue.c that will allow your custom copy of LOS to function in LisaEm, even after you've replaced the stock copy of SYSTEM.OS with your own. We'll talk about why this is necessary later.
 
 # What's not in this repo?
 The actual LOS source code itself. Thanks to Apple's really weird license on the code, I can't share it here. So you'll have to copy it into my disk image, make changes to some of the files, and then use my build scripts to build everything. But don't worry, all the info needed to do all of this (and a script to help with the copy process) is right here!
@@ -41,16 +41,16 @@ The apps include not only the 7/7 apps (LisaWrite, LisaCalc, etc) but also some 
 
 Note that Apple didn't release LisaWrite's dictionary as part of the source code release because it's still copyrighted by HM. And they also omitted some of the source files that talk to the dictionary file for some reason, so we actually have to make some changes to the LisaWrite source code to patch out all the dictionary code and get it to compile.
 
-By default, files visible in the Workshop are NOT visible in the graphical Office System itself. So once you've built an application, you have to do a couple extra things in order to actually get it to appear in the Office System. First, you have to copy the application binary into the root of your hard disk and rename it to {TXXX}Obj where XXX is the application's "tool number". This can be any number you want, but be careful to search through the source code in case there are any instances where it's hard-coded into the application that you would of course need to modify! Now that you've given it the proper name, you run INSTALLTOOL from the Workshop, which will ask you a few questions about your app, including its tool number. Once you answer its questions and give your app a name, it'll install the app into the Office System with whatever name you provided! And by the way, this is all just for reference; my build scripts do it for you!
+By default, files visible in the Workshop are NOT visible in the graphical Office System itself. So once you've built an application, you have to do a couple extra things in order to actually get it to appear in the Office System. First, you have to copy the application binary into the root of your hard disk and rename it to {TXXX}Obj where XXX is the application's "tool number". This can be any number you want, but be careful to search through the source code in case there are any instances where it's hard-coded into the application which you would need to modify! Now that you've given it the proper name, you run INSTALLTOOL from the Workshop, which will ask you a few questions about your app, including its tool number. Once you answer its questions and give your app a name, it'll install the app into the Office System with whatever name you provided! And by the way, this is all just for reference; my build scripts do it for you!
 
-There's one more thing that you have to do for applications too: make a phrase file. You'll notice that all the Office System apps 
+There's one more thing that you have to do though: make an application phrase file. You'll notice that all the Office System apps 
 come with an "alert" file somewhere in their source directory, which contains all the strings that show up in the app's dialog boxes and menu bar menus. This file has to be run through a Workshop program called ALERT, which will generate a phrase file from this data that the Alert Manager can understand. The resulting phrase file must be saved as {TXXX}PHRASE in order for the Office System to find it. And once again, my build scripts will do this for you!
 
 Since the Environments Window (APEW) and Desktop Manager (APDM) don't get installed into the Office System (the Environments Window loads before the Office System and the Desktop Manager is the Office System), you don't have to use INSTALLTOOL for either of them.
 
-The Environments Window is the first shell that gets loaded by the system, so it gets saved as SYSTEM.SHELL. It then loads the Desktop Manager, and in order to have APEW see your Desktop Manager instance, it must be saved as shell.Something, where Something is the name that you want the shell to show up with in the Environments Window. To allow the use of both the original LOS shell and our newly-compiled replacement, my build scripts install the new Desktop Manager as shell.AlexTheCat123 and leave the old shell.Office System untouched. This will cause your newly-compiled shell to show up in the Environments Window as AlexTheCat123. APEW doesn't require a phrase file, but APDM does, and it's normally saved as SYSTEM.DMALERTSPHRASE. But to avoid overwriting the original Office System's phrase file, my build scripts save it as SYSTEM.DMALEXALERTSPHRASE instead.
+The Environments Window is the first shell that gets loaded by the system, so it gets saved as SYSTEM.SHELL on your disk. It then loads the Desktop Manager, and in order to have APEW see your Desktop Manager instance, it must be saved as shell.Something, where Something is the name that you want the shell to show up with in the Environments Window. To allow the use of both the original LOS shell and our newly-compiled replacement, my build scripts install the new Desktop Manager as shell.AlexTheCat123 and leave the old shell.Office System untouched. This will cause your newly-compiled shell to show up in the Environments Window as AlexTheCat123. APEW doesn't require a phrase file, but APDM does, and it's normally saved as SYSTEM.DMALERTSPHRASE. But to avoid overwriting the original Office System's phrase file, my build scripts save it as SYSTEM.DMALEXALERTSPHRASE instead.
 
-Both APLC and APBG require a file called {Txxx}tables, which is made from aplc/mm/tables.text, but it's not just a direct copy of that file. To generate it, you have to build LCORBGLIB (so APLC) in debug mode, and it'll automatically read the file and generate {Txxx}tables. Then rebuild in regular mode and it'll use the newly-made table file. But that's really annoying, so I've just included a copy from the original LisaCalc diskette that the build scripts will use instead. APLC also requires some LisaDraw picture files for things like the "function hints" page, so I've included copies of those from the original disk as well. The build scripts will put them in the proper place for you!
+Both APLC and APBG require a file called {Txxx}tables, which is made from aplc/mm/tables.text, but it's not just a direct copy of that file. To generate it, you have to build LCORBGLIB (which we'll talk about in a second) in debug mode, and it'll automatically read the file and generate {Txxx}tables. Then rebuild in regular mode and it'll use the newly-made table file. But that's really annoying, so I've just included a copy from the original LisaCalc diskette that the build scripts will use instead. APLC also requires some LisaDraw picture files for things like the "function hints" page, so I've included copies of those from the original disk as well. The build scripts will put them in the proper place for you!
 
 APLW requires a file called {TXXX}search.lotus that contains some strings related to LisaWrite's Find tool, which has to be grabbed from the original LisaWrite diskette. I've already done this for you and included it in the base disk image for the build scripts to use!
 
@@ -103,7 +103,7 @@ Another library that produces more than just an intrinsic library is LIBPR. On t
 | File                           | Purpose |
 | ------------------------------ | ------- |
 | System.Print                   | The background printing process than handles scheduling and executing print jobs. |
-| System.PR_Imagewriter / || DMP | Printer driver for the ImageWriter Printer. |
+| System.PR_Imagewriter / II DMP | Printer driver for the ImageWriter Printer. |
 | System.PR_Daisy Wheel Printer  | Printer driver for the Daisy Wheel Printer. |
 | System.PR_Ink Jet Printer      | Printer driver for the Canon Inkjet Printer. |
 | PARBTNDATA                     | Parent Button Data file; contains the locations/attributes of buttons in the main print dialog. |
@@ -117,7 +117,7 @@ Another library that produces more than just an intrinsic library is LIBPR. On t
 | SYSTEM.DWALERTS.PHRASE         | Daisy Wheel phrase file; contains alerts related to the Daisy Wheel printer. |
 
 
-Yeah, it's a whole lot. Figuring out which files get linked to form each one was quite a task!
+Yeah, it's a whole lot. Figuring out which files got linked to form each one was quite a task!
 
 There were also some missing source files in LIBPL and LIBFP that I had to recreate. I did this by disassembling the original IOSPASLIB and IOSFPLIB, finding the necessary missing code in the disassembly, and creating new source files to house it. Then we just run these through the assembler and link them with everything else when we build IOSPASLIB and IOSFPLIB. And since they're based on the original IOSPASLIB and IOSFPLIB instead of source code, I can include the files in the disk image that I 
 provide! The recreated files are LIBPL/PASMEM.TEXT, LIBPL/PWRII.TEXT, and LIBFP/STR2DEC.TEXT. And also LIBPL/PASLIB.TEXT, which is just a dummy unit file with nothing in it.
@@ -150,7 +150,7 @@ By default, SYSTEM.CD_Profile only supports drives up to 16MB thanks to the foll
 if (discsize <= 9728) or (discsize > 30000)
     then drivetype:= T_Profile (* set drivetype to profile *)
 ```
-This says that the drive gets considered a 5MB ProFile (T_Profile) if it's 5MB or smaller (9728 blocks or smaller) or if it's larger than about 16MB (30000 blocks). Otherwise, if it's between this range, the actual capacity of the drive gets utilized. So this means that we can't make a volume any larger than 16MB because it'll get formatted to 5MB, but we certainly need more than this in order to fit all the code on the disk. So we can patch the driver by changing the 30000 to some massive number so that drives get utilized to their full potential up to a much larger size. And this allows us to have a 50-ish MB drive like the image that's in this GitHub repo. You can go much bigger than this even (theoretically 8GB), but there's no reason to.
+This says that the drive gets considered a 5MB ProFile (T_Profile) if it's 5MB or smaller (9728 blocks or smaller) or if it's larger than about 16MB (30000 blocks). Otherwise, if it's between this range, then the actual capacity of the drive gets utilized. So this means that we can't make a volume any larger than 16MB because it'll get formatted to 5MB, but we certainly need more than this in order to fit all the code on the disk. So we can patch the driver by changing the 30000 to some massive number so that drives get utilized to their full potential up to a much larger size. And this allows us to have a 50-ish MB drive like the image that's in this GitHub repo. You can go much bigger than this even (theoretically 8GB), but there's no reason to.
 
 Interestingly enough, we have some of the code necessary to build a SYSTEM.CD_Twiggy (SOURCE/TWIGGY.TEXT), but we seem to be missing SOURCE/TWIGGYASM.TEXT. If we recreated that file though, I think we could add Twiggy support back to LOS 3.0!
 
@@ -165,7 +165,7 @@ We've also got 4 SYSTEM.BT files, which are BooTloaders for the different device
 Note that simply having the bootloader files sit on your hard disk doesn't really do anything. In order to actually use one as the bootloader of your disk, you must write it into the disk's boot blocks. Whenever the OS initializes a disk, it automatically copies the bootloader from the appropriate BT file into the boot blocks of that disk, but there's also an FS_Utilities() syscall (see LIBOS/PSYSCALL.TEXT and SOURCE/FSINIT2.TEXT for more info) that will copy the appropriate BT file into the boot blocks without destroying all the data on the disk.
 
 ## The Lisa Boot Process
-Let's go over what happens from the moment you choose a disk from the Startup From... menu to the moment that the desktop appears.
+Let's go over what happens from the moment you choose a disk in the Startup From... menu to the moment that the desktop appears.
 
 First, after you choose to boot from a disk, the Lisa boot ROM loads the first block of that disk into RAM and checks if it's bootable by looking for the signature "AAAA" in the disk's tag bytes. Then, if this is found, it jumps to the start of that block, which contains the beginning of the bootloader code from SYSTEM.BT.
 
@@ -183,21 +183,21 @@ Now the processes that we've spawned can continue to configure the OS for operat
 
 Remember, SYSTEM.SHELL is the Environments Window (APEW/SHELL.TEXT), so once this process gets control it'll search for shell.* operating environment files on the disk and will then display them, assuming you haven't set it to automatically boot from a default environment. Then you pick your environment (let's assume you pick the Office System (APDM) here), and SYSTEM.SHELL will tell the OS to spawn the shell.whatever_your_environment_was_called process.
 
-Once control is handed over to this process, the load of the graphical shell (the Desktop Manager, APDM) can begin. This is all done in APDM/DESK.TEXT. First, it sets up some exception handlers, and then inits the PRAM Manager, QuickDraw, the Font Manager, the Window Manager, the Alert Manager, some objects, and the Storage Manager, which includes making heap zones for the Desktop Manager's use. This takes a while because it requires loading LIBPM, LIBQD, LIBFM, LIBWM, LIBAM, and LIBSM into memory, and you know this process is over when the "Welcome to LOS" dialog shows up on the screen. After this dialog pops up, the Desktop Manager loads the printer library (LIBPR) into RAM. Then it inits the field editor (LIBFE), scrollbar library (LIBSB), international library (LIBIN), and FilerComm (LIBFC). Now it spawns System.Print, the background printing process, and marks the completion of this task by removing the "Welcome to LOS" box from the screen. Now it's just a matter of drawing the icons on the desktop, mounting any additional drives besides the boot volume, and changing the cursor from the hourglass "busy cursor" to the "standard cursor". And that's it; now you're on the desktop and the Lisa is ready to use!
+Once control is handed over to this process, the load of the graphical shell (the Desktop Manager, APDM) can begin. This is all done in APDM/DESK.TEXT. First, it sets up some exception handlers, and then inits the PRAM Manager, QuickDraw, the Font Manager, the Window Manager, the Alert Manager, some objects, and the Storage Manager, which includes making heap zones for the Desktop Manager's use. This takes a while because it requires loading LIBPM, LIBQD, LIBFM, LIBWM, LIBAM, and LIBSM into memory, and you know this process is over when the "Welcome to LOS" dialog shows up on the screen. After this dialog pops up, the Desktop Manager loads the printer library (LIBPR) into RAM. Then it inits the field editor (LIBFE), scrollbar library (LIBSB), international library (LIBIN), and FilerComm (LIBFC). Now it spawns System.Print, the background printing process, and marks the completion of this task by removing the "Welcome to LOS" box from the screen. Now it's just a matter of drawing the icons on the desktop, mounting any additional drives besides the boot volume, and changing the cursor from the hourglass "busy cursor" to the "standard cursor". And that's it; you're now on the desktop and the Lisa is ready to use!
 
 ## Packing and PACKSEG
-In order to conserve disk space, the Lisa actually uses a form of compression on some of the binaries on the disk. The compression algorithm is fairly simple and can be found in SOURCE/UNPACK.TEXT; it basically either loads code from the object file itself or from a common "packtable" containing bits of code commonly shared by lots of files and routines depending on the states of a series of flag bytes. The problem is that the compiler/linker doesn't generate packed code by default; Apple used a separate program called PACKSEG to pack each source file according to the common system packtable called SYSTEM.UNPACK.
+In order to conserve disk space, the Lisa actually uses a form of compression on some of the binaries on the disk. The compression algorithm is fairly simple and can be found in SOURCE/UNPACK.TEXT; it basically either loads code from the object file itself or from a common "packtable" containing bits of code commonly shared by lots of files and routines depending on the state of a series of flag bytes. But the compiler/linker doesn't generate packed code by default; Apple used a separate program called PACKSEG to pack each source file according to the common system packtable called SYSTEM.UNPACK.
 
 The problem is that we don't have either the PACKSEG binary or the source code to it, so we can't pack any of our binaries. Fortunately, the OS loader is smart enough to auto-detect and load either a packed or an unpacked binary, so we don't strictly need to pack any of the code on the hard disk, but the issue is that many of our files won't fit on the LOS installer diskettes without being packed. So it's impossible to make new installer disks (or a LisaGuide diskette; it's also too big) until we find the original PACKSEG source code, find a binary that's compatible with the Workshop, or write our own.
 
 # The Workshop Development Environment
-All development work for the Lisa is done in an operating environment called the Workshop. This is an almost entirely text-based environment that gets installed alongside the regular Office System, with the only graphical components being the text editor, the serial transfer tool, and the preferences tool.
+All development work for the Lisa is done in an operating environment called the Workshop. This is an almost entirely text-based environment that gets installed alongside the regular Office System, with the only graphical components being the text editor, the serial transfer tool, and the Preferences tool.
 
-The Workshop interface is very heavily inspired by the UCSD P-System. Menu options are displayed across the top of the screen, and you just type the first letter of a menu option in order to activate it. The FILE-MGR and SYSTEM-MGR are actually submenus, which you can return from by hitting Q for Quit. FILE-MGR's function should be pretty obvious, but SYSTEM-MGR is how you access the preferences tool, set the clock, and view/kill running processes.
+The Workshop interface is very heavily inspired by the UCSD P-System. Menu options are displayed across the top of the screen, and you just type the first letter of a menu option in order to activate it. The FILE-MGR and SYSTEM-MGR are actually submenus, which you can return from by hitting Q for Quit. FILE-MGR's function should be pretty obvious, but SYSTEM-MGR is how you access the Preferences tool, set the clock, and view/kill running processes.
 
 There are often more menu options than can fit on the screen, so just hit "?" to show any options that couldn't fit. For instance, the Linker and Assembler aren't visible on the main menu without hitting "?". Note that you can still execute hidden options by pressing the appropriate letter even if they're hidden.
 
-The Lisa's filesystem is a bit weird, especially in its naming of disks and use of wildcards. In a Lisa 2/5, your hard disk is called disk -#11 and in a 2/10 it's called -#12. The micro diskette drive is called -lower and hard disks attached to expansion slots are in the format -#slotnum#portnum, like -#2#1 for a drive attached to the lower port on a parallel card installed in slot 2. You probably won't need these last 4, but the serial ports are -rs232a and -rs232b and the printer is -printer.
+The Lisa's filesystem is a bit weird, especially in its naming of disks and use of wildcards. In a Lisa 2/5, your hard disk is called -#11 and in a 2/10 it's called -#12. The micro diskette drive is called -lower and hard disks attached to expansion slots are in the format -#slotnum#portnum, like -#2#1 for a drive attached to the lower port on a parallel card installed in slot 2. You probably won't need these upcoming 3, but the serial ports are -rs232a and -rs232b and the printer is -printer.
 
 By default, the Lisa will perform operations on the boot volume, so if you choose List from the FILE-MGR and just hit enter, it'll just list the contents of your boot hard disk without you having to specify -#11 or -#12. But if you wanted to list all the files on the micro diskette, you'd have to specify -lower-= using the Lisa's weird "=" wildcard. On the Lisa, "=" is the same as the "*" wildcard that you might be more familiar with. As another example, if you wanted to list all the files in the ALEX directory on your boot disk, you could specify ALEX/= in response to the list prompt (remember, we don't have to put -#11- at the beginning since the default drive is the boot drive).
 
@@ -208,10 +208,10 @@ To run a program/tool, just choose R for Run from the main menu and type the pat
 
 If you instead want to run an EXEC script (like to build the OS, we'll talk about them later), you have to add a "<" character at the start of the path, like "<ALEX/MAKE/LIBOS.TEXT" to build LIBOS.
 
-From the main menu, P runs the Pascal compiler, A runs the assembler, and L runs the Linker.
+From the main menu, P runs the Pascal compiler, A runs the Assembler, and L runs the Linker.
 
 ## Workshop EXEC Scripts
-EXEC is the Workshop's primitive (but actually pretty complex by 1980s standards) scripting language that can be used to automate building applications (and pretty much any other operation in the Workshop). Any command you can type from the keyboard can be automated in an Exec script.
+EXEC is the Workshop's rather impressive scripting language that can be used to automate building applications (and pretty much any other operation in the Workshop). Any command you can type from the keyboard can be automated in an EXEC script.
 
 In its simplest form, an exec script is nothing but a series of keystrokes saved in a text file that gets passed to the Workshop shell as if you typed it yourself. For instance, the following EXEC script copies one file to another:
 ```
@@ -257,8 +257,9 @@ The disk image I've provided in this repo is a good starting point for your LOS 
 Here's a list of everything that I've provided in the base disk image, just to give you a general idea (and show that there's no source code on there):
 | Item                                   | Explanation |
 | -------------------------------------- | ----------- |
-| Stock Copy of LOS 3.0 and Workshop 3.0 | This one should be pretty obvious. It's patched to allow large disk support though. Note that the patch was done on the binary level, so it doesn't contain compiled source code. |
+| Stock Copy of LOS 3.0 and Workshop 3.0 | Completely stock, although it is patched to allow large disk support. Note that the patch was done on the binary level, so it doesn't contain compiled source code. |
 | Icons For Apps                         | My lovely icons for all the LOS applications! |
+| ALEX/TRANSFER.TEXT                     | A script that you'll use in conjunction with a Python program to easily copy the source files into your disk image! |
 | My Build Scripts                       | This is the big one; all the build scripts I wrote to actually get the source code to build. |
 | APLC/CIRCLEBOX                         | A LisaDraw picture file required by LisaCalc that I grabbed off the LisaCalc install diskette. |
 | APLC/FINDBOX                           | Another picture needed by LisaCalc from the install diskette. |
@@ -277,14 +278,13 @@ Here's a list of everything that I've provided in the base disk image, just to g
 # Getting the Code Onto Your Lisa
 First, download the code from [here](https://info.computerhistory.org/apple-lisa-code)! After you've got it, we need to get it over to the Lisa. Thanks to some great ideas from Tom Stepleton and James MacPhail on LisaList2, I've written a cool little Python program that will handle all this for you. It's not quick, but at least it doesn't require any user intervention!
 
-## Problems With The Source Files
+## Fixing Up The Source Files
 There are three main problems with the source files as they're given to us by Apple.
 - First, the .unix.txt extensions on all the files are pretty annoying. They just make all the filenames longer and get in the way.
 - Second, the Lisa has no idea what a LF character is. It only recognizes CRs. So we have to strip all the LFs from the source files and replace them with CRs.
 - And third, each source file has a weird garbage character on its very last line. Obviously we need to get rid of all of these too!
 
 The serial transfer program handles all these automatically while sending the files to the Lisa, so there's no need to make any changes to the actual files on your machine, but I've included another Python script that will fix all these problems on the files in place, in case that makes you feel better. I like doing this just to get rid of all the stupid .unix.txt extensions and get nice .text extensions on the ends! Simply place the script (from the ```scripts``` directory) into your Lisa_Source directory, and run:
-
 ```
 python3 process_source.py
 ```
@@ -357,7 +357,7 @@ There's a chance that you'll experience another kind of error where the Lisa sto
 Now that we've copied all the code onto the Lisa, some of the LOS source files need modifications in order to build properly. Many of these stem from the fact that some of the unique characters in the Lisa's extended charset get corrupted when transferred over serial, but some are caused by other things too. When doing the character fixes, if you can't figure out how to type some of the weird characters (which is definitely going to happen), just copy-paste the character from the ALLCHARS.TEXT file in the root of the disk image.
 
 ## Why No Xdiffs?
-I had a couple suggestions to distribute the changes in the form of xdiffs, but I ultimately decided against this for one big reason. Many of the fixes can only be implemented on the Lisa itself since the characters in question can only be typed on the Lisa. And xdiff doesn't run on the Lisa, so distributing them that way would be pretty useless. And it felt weird to distribute some as xdiffs and others as descriptions of changes, so I just decided to eliminate the xdiffs entirely. With that in mind, here they are:
+I had a couple suggestions to distribute the changes in the form of xdiffs, but I ultimately decided against this for one big reason. Many of the fixes can only be implemented on the Lisa itself since the characters in question can only be typed on the Lisa. And xdiff doesn't run on the Lisa, so distributing them that way would be pretty useless. And it felt weird to distribute some as xdiffs and others as descriptions of changes, so I just decided to eliminate the xdiffs entirely. Plus, having to make all the changes by hand will get you a lot more familiar with the source code and all the modifications that have to be made to get it to build! With that in mind, here they are:
 
 ## Character-Related Fixes
 - In APHP/HP.TEXT, find "divide sign" and replace the character in the quotes with the division sign (÷). Now make sure the character on the next line is a forward slash and replace the character on the line below that with the Lisa "diamond" character. Also find "A-A" and delete everything following it on that line. Then retype the rest of the line as " A.A A–A A'A".
@@ -441,7 +441,7 @@ If you want to build individual bits of the codebase, that's entirely possible t
 | ----------- | ------- |
 | ALL         | Builds everything and makes a new set of installer and LisaGuide diskettes. Don't use this right now since we don't have PACKSEG! |
 | ALL_NOFLOP  | Builds everything but doesn't make installer or LisaGuide diskettes. Run this one if you want to make everything! | 
-| AP**        | Builds the app specified by ** like APLP for instance, and performs the appropriate installation procedure for it. |
+| AP**        | Builds the app specified by ** (like APLP for instance), and performs the appropriate installation procedure for it. |
 | APIM        | Technically one of the AP** scripts, but I want to mention it separately because this is LisaGuide. It'll ask you if you want to make a LisaGuide diskette after building LisaGuide itself; answer no for now since we don't have PACKSEG! |
 | APIMDISK    | Makes a new LisaGuide diskette. Make sure you've built APIM first, and don't run this at all right now since we don't have PACKSEG! |
 | APPS        | Builds and installs all the apps, other than APIN (the installer) and APIM (LisaGuide). |
@@ -454,13 +454,13 @@ If you want to build individual bits of the codebase, that's entirely possible t
 | DISKn       | Makes a new copy of LOS install disk n from our newly-built files. Make sure you've built everything else first, and don't use this at all right now since we don't have PACKSEG! |
 | FULLOS      | Builds and installs the entirety of the OS itself, including SYSTEM.OS and the SYSTEM.CD_* and SYSTEM.BT_* files. Does NOT overwrite the boot blocks with the new BT files. Make sure to reboot after this! |
 | INSTALLER   | Builds the LOS installer application and then optionally makes a set of new LOS install disks. Say no to this option for now since we don't have PACKSEG! |
-| LIB**       | Builds the library specified by **, like LIBAM for instance. If it's part of SYS1LIB or SYS2LIB, you must re-link that library file and reboot after this in order to actually install it! |
+| LIB**       | Builds the library specified by **, like LIBAM for instance. If the library you're building is part of SYS1LIB or SYS2LIB, you must re-link that library file and reboot after this in order to actually install it! |
 | LIBS        | Builds and installs all of the system libraries. Make sure to reboot after this! |
 | SYSTEMOS    | Builds and installs a new copy of SYSTEM.OS. Make sure to reboot after this! |
 | TKIN        | Builds INSTALLTOOL and puts it in the PROGS directory. |
 | TKALERT     | Builds the phrase file generator (ALERT) and places it in the PROGS directory as ALERTGEN_NEW1984.OBJ. |
 
-To relink SYS1LIB or SYS2LIB, run ALEX/LINK/SYS1LIB or ALEX/LINK/SYS2LIB.
+To relink SYS1LIB or SYS2LIB, run ```ALEX/LINK/SYS1LIB``` or ```ALEX/LINK/SYS2LIB```.
 
 There are tons of scripts in the ALEX/ASM, ALEX/COMP, and ALEX/LINK directories that handle the individual steps of assembling, compiling, and linking each portion of the source code. So if you only need to perform one of these operations instead of doing a full MAKE that runs all three, you can just run one of these scripts individually.
 
@@ -468,23 +468,27 @@ There are tons of scripts in the ALEX/ASM, ALEX/COMP, and ALEX/LINK directories 
 Alongside all the expected source code, the source release also included several little text-based Workshop utility and demo applications. As you build all the source code, each of these apps will build and install into the PROGS directory.
 
 ## Things That Work (And are in the PROGS directory)
-- ALERTGEN_OLD1982.OBJ - An old copy of the ALERT program from 1982. Source is in LIBAM.
-- ALERTGEN_NEW1984.OBJ - The most up-to-date copy of the ALERT program from 1984. Source is in TKALERT.
-- BLESS.OBJ - A program that will bless a disk. Source is in LIBOS.
-- CDCHAR.OBJ - Generates a "configurable driver characteristics file" for a set of LOS drivers. Not sure what this is for exactly. Source is in SOURCE.
-- CDCONFIG.OBJ - Allows you to add and remove configurable driver entries from the SYSTEM.cdd configurable driver directory. Source is in SOURCE.
-- COPYMASTER.OBJ - Does a block-for-block copy of one disk to another and makes the destination bootable. Source is in LIBOS.
-- DEVCONTROL.OBJ - Allows you to directly control a device by sending commands to its driver. Source is in SOURCE.
-- GDATALIST.OBJ - Provides info about the system global data area. Source is in SOURCE.
-- KEYBOARD.OBJ - Tells you the layout of your keyboard and lets you change it. Source is in LIBHW.
-- LIBMASTER.OBJ - Creates a new FONT.LIB system font file from a set of individual font files. Source is in LIBFM.
-- MAKEHEUR.OBJ - Seems to make a new FONT.HEUR file from a FONT.LIB file, but I can't get it to work. Source is in LIBFM.
-- NWSHELL.OBJ - An alternate Monitor-like shell for the Lisa. To run, rename to shell.UltraDOS, reboot, and choose it from the Environments Window. Source is in SOURCE.
-- PEPSITESTS.OBJ - A set of hardware demos for the Pepsi (Lisa 2/10) system. Includes a theremin! Source is in LIBHW.
-- STUNTS.OBJ - Similar to PEPSITESTS, but for the 2/5. Source is in LIBHW. 
-## Things That Don't Work (And aren't in the PROGS directory)
-- LIBPR/SUPER.TEXT - A printer demo that seems to be written for older versions of the system libraries. Could probably be updated to work with the latest Lisa system (which would be really cool)!
-- APPW/PMCONFIG.TEXT - A text-based version of the Preferences tool. Not only uses older versions of libraries, but also relies on an older Lisa driver model, so would be difficult to port to the latest Lisa system.
+| Program              | Purpose |
+| -------------------- | ------- |
+| ALERTGEN_OLD1982.OBJ | An old copy of the ALERT program from 1982. Source is in LIBAM. |
+| ALERTGEN_NEW1984.OBJ | The most up-to-date copy of the ALERT program from 1984. Source is in TKALERT. |
+| BLESS.OBJ            | A program that will bless a disk. Source is in LIBOS. |
+| CDCHAR.OBJ           | Generates a "configurable driver characteristics file" for a set of LOS drivers. Not sure what this is for exactly. Source is in SOURCE. |
+| CDCONFIG.OBJ         | Allows you to add and remove configurable driver entries from the SYSTEM.cdd configurable driver directory. Source is in SOURCE. |
+| COPYMASTER.OBJ       | Does a block-for-block copy of one disk to another and makes the destination bootable. Source is in LIBOS. |
+| DEVCONTROL.OBJ       | Allows you to directly control a device by sending commands to its driver. Source is in SOURCE. |
+| GDATALIST.OBJ        | Provides info about the system global data area. Source is in SOURCE. |
+| KEYBOARD.OBJ         | Tells you the layout of your keyboard and lets you change it. Source is in LIBHW. |
+| LIBMASTER.OBJ        | Creates a new FONT.LIB system font file from a set of individual font files. Source is in LIBFM. |
+| MAKEHEUR.OBJ         | Seems to make a new FONT.HEUR file from a FONT.LIB file, but I can't get it to work. Source is in LIBFM. |
+| NWSHELL.OBJ          | An alternate Monitor-like shell for the Lisa. To run, rename to shell.UltraDOS, reboot, and choose it from the Environments Window. Source is in SOURCE. |
+| PEPSITESTS.OBJ       | A set of hardware demos for the Pepsi (Lisa 2/10) system. Includes a theremin! Source is in LIBHW. |
+| STUNTS.OBJ           | Similar to PEPSITESTS, but for the 2/5. Source is in LIBHW. |
+## Things That Don't Work
+| Program            | Purpose |
+| ------------------ | ------- |
+| LIBPR/SUPER.TEXT   | A printer demo that seems to be written for older versions of the system libraries. Could probably be updated to work with the latest Lisa system (which would be really cool)! |
+| APPW/PMCONFIG.TEXT | A text-based version of the Preferences tool. Not only uses older versions of libraries, but also relies on an older Lisa driver model, so would be difficult to port to the latest Lisa system. |
 
 # Fun Stuff I Learned
 - Shift-option-numpad 0 will immediately dim the screen to black. So if you're up to no good on your Lisa, you can immediately hide your suspicious activities!
@@ -493,11 +497,11 @@ Alongside all the expected source code, the source release also included several
 - Apple-option-m activates the Lisa Monkey, which is basically the same thing as the [Mac Monkey](https://folklore.org/Monkey_Lives.html?sort=date). You can single-step the Monkey with Apple-option-s and can kill the Monkey at any time with Apple-option-q. Note that you'll need to set the wmMonkey flag in LIBWM/EVENTS.TEXT to TRUE, rebuild LIBWM, and then relink SYS1LIB in order to include the Monkey in the compiled Window Manager.
 - Believe it or not, none of the original Lisa apps actually use the ToolKit! They all interface with the system libraries directly without using the ToolKit API, likely because the ToolKit wasn't finished until well into application development.
 - The Desktop Manager (APDM) has two flags in APDM/GLOBALS.TEXT that are pretty cool.
--- One is network, which offers a (very limited) peek into the network-enabled future of LOS if set to TRUE. It just shows a "file cabinet" icon on the desktop that I guess was supposed to be an inbox/outbox thing, but you can't copy files into this folder. And setting this flag to true also corrupts the filesystem and makes a new copy of the Clock on the desktop each time you reboot for some reason, so I'd advise against using it other than just as a curiosity!
--- The other is flrJrnl, which enables a cool journaling mode in the shell. If this is enabled, the OS will appear to hang on boot right around the "Welcome to LOS" screen, but just press Apple-Enter to go to the alt console where you can provide user input. It'll ask you for a recording or playback journal filename. So what you can do here is record a set of keyboard and mouse inputs to a journal file, reboot the system, and then load that file back in and play back your actions. It's pretty cool!
+  - One is network, which offers a (very limited) peek into the network-enabled future of LOS if set to TRUE. It just shows a "file cabinet" icon on the desktop that I guess was supposed to be an inbox/outbox thing, but you can't copy files into this folder. And setting this flag to true also corrupts the filesystem and makes a new copy of the Clock on the desktop each time you reboot for some reason, so I'd advise against using it other than just as a curiosity!
+  - The other is flrJrnl, which enables a cool journaling mode in the shell. If this is enabled, the OS will appear to hang on boot right around the "Welcome to LOS" screen, but just press Apple-Enter to go to the alt console where you can provide user input. It'll ask you for a recording or playback journal filename. So what you can do here is record a set of keyboard and mouse inputs to a journal file, reboot the system, and then load that file back in and play back your actions. It's pretty cool!
 - Pretty much every app, library, and the OS itself has a debug flag that can be enabled to print tons of debugging info to the alt console (which you can access by pressing Apple-Enter). The debugging features are actually interactive for some of the graphical apps, where enabling the debugging flag might add a Debug menu to the menu bar.
 - Contrary to what some people have said, the Lisa does NOT print tons of WRITELNs to the alt console by default. Pretty much all of the WRITELNs are compiled out by default, so this is not the reason for LOS being so slow. In fact, just enabling the WRITELNs for the OS alone takes the boot time from about 1 minute to about 45 minutes!
-- There's a procedure called Muzak in SOURCE/SFILEIO2.TEXT that runs whenever the OS mounts a LOS 3.0 filesystem. But it'll only be compiled in if the DEBUG1 level of OS debugging is enabled, and even then it'll just play a single beep when the FS gets mounted. If you look at the Muzak procedure though, you'll see some other music notes that are commented out, so you can uncomment them all to have it play an entire "song" (although it really doesn't sound like music) whenever it mounts a disk. Pretty cool!
+- There's a procedure called Muzak in SOURCE/SFILEIO2.TEXT that runs whenever the OS mounts an LOS 3.0 filesystem. But it'll only be compiled in if the DEBUG1 level of OS debugging is enabled, and even then it'll just play a single beep when the FS gets mounted. If you look at the Muzak procedure though, you'll see some other music notes that are commented out, so you can uncomment them all to have it play an entire "song" (although it really doesn't sound like music) whenever it mounts a disk. Pretty cool!
 
 # Potential Additions/Improvements
 Although I'd love to mess with some of these myself, I think I'll probably leave them to other people for the time being. I've spent enough time with LOS lately, and I need to work on some other things right now!
@@ -509,8 +513,8 @@ Although I'd love to mess with some of these myself, I think I'll probably leave
 - Twiggy Support - We've got the bootloader, we're just missing one source file from the configurable driver.
 - Additional Device Drivers - Add support for things like SCSI, the Apple Color Plotter, the LisaDAC, and so on.
 
-# All Files That Form an LOS/Workshop Installation
-We've talked about a bunch of files throughout this document, let's conclude things by bringing them all together and making a list of all the files that you'll find on a standard LOS/Workshop hard disk. We've already talked about most of these, but a few are new.
+# All The Files That Form an LOS/Workshop Installation
+We've talked about a bunch of files throughout this document, so let's conclude things by bringing them all together and making a list of all the files that you'll find on a standard LOS/Workshop hard disk. We've already talked about most of these, but a few are new.
 | File                           | Purpose |
 | ------------------------------ | ------- |
 | CIBTNDATA                      | Button location and attributes data for the C-Itoh (ImageWriter) printer dialog box. Created by LIBPR/PRBTN.OBJ. |
@@ -577,5 +581,5 @@ We've talked about a bunch of files throughout this document, let's conclude thi
 | TK2LIB.OBJ                     | Part 2 of the Lisa ToolKit API intrinsic library. |
 
 # Changelog
-- 6/28/2025 - Initial Release
+- 7/9/2025 - Initial Release
 - 7/24/2025 - Added ```lisa_serial_transfer.py```, a script for easily transferring the source files over to the Lisa. Also updated the disk image and ```src``` directory with a new ```ALEX/TRANSFER.TEXT``` script, an ```ALEX/ASM/LIBSM.TEXT``` script that was previously missing, and a fixed version of ```ALEX/COMP/LIBOS```.
