@@ -13,7 +13,7 @@ Four things!
 - glue.c is a replacement for LisaEm's standard glue.c that will allow your custom copy of LOS to function in LisaEm, even after you've replaced the stock copy of SYSTEM.OS with your own. We'll talk about why this is necessary later.
 
 # What's not in this repo?
-The actual LOS source code itself. Thanks to Apple's really weird license on the code, I can't share it here. So you'll have to manually copy it into my disk image, make changes to some of the files, and then use my build scripts to build everything. But don't worry, all the info needed to do all of this is right here in this readme!
+The actual LOS source code itself. Thanks to Apple's really weird license on the code, I can't share it here. So you'll have to copy it into my disk image, make changes to some of the files, and then use my build scripts to build everything. But don't worry, all the info needed to do all of this (and a script to help with the copy process) is right here!
 
 # Source Code Structure and the Lisa OS Architecture
 The LOS source code can be divided into 3 main parts. Going from highest level of abstraction to lowest level of abstraction, these are:
@@ -275,50 +275,35 @@ Here's a list of everything that I've provided in the base disk image, just to g
 | APLW/SEARCH.LOTUS                      | A LisaWrite data file containing strings needed by the Find tool that I copied from the LisaWrite install diskette. |
 
 # Getting the Code Onto Your Lisa
-First, download the code from [here](https://info.computerhistory.org/apple-lisa-code)! After you've got it, we need to get it over to the Lisa.
+First, download the code from [here](https://info.computerhistory.org/apple-lisa-code)! After you've got it, we need to get it over to the Lisa. Thanks to some great ideas from Tom Stepleton and James MacPhail on LisaList2, I've written a cool little Python program that will handle all this for you. It's not quick, but at least it doesn't require any user intervention!
 
-## Fixing Up The Source Files
+## Problems With The Source Files
 There are three main problems with the source files as they're given to us by Apple.
 - First, the .unix.txt extensions on all the files are pretty annoying. They just make all the filenames longer and get in the way.
 - Second, the Lisa has no idea what a LF character is. It only recognizes CRs. So we have to strip all the LFs from the source files and replace them with CRs.
 - And third, each source file has a weird garbage character on its very last line. Obviously we need to get rid of all of these too!
 
-Luckily, I've written a Python script that fixes all three of these problems for us! Simply place the script in your Lisa_Source directory, and run:
+The serial transfer program handles all these automatically while sending the files to the Lisa, so there's no need to make any changes to the actual files on your machine, but I've included another Python script that will fix all these problems on the files in place, in case that makes you feel better. I like doing this just to get rid of all the stupid .unix.txt extensions and get nice .text extensions on the ends! Simply place the script (from the ```scripts``` directory) into your Lisa_Source directory, and run:
+
 ```
 python3 process_source.py
 ```
 
-IMPORTANT: If you ever change one of the source files on a modern machine, your text editor might replace all the CRs with LFs again. To fix this, run the following command after saving any changes to that file:
+A note: If you ever change one of the source files on a modern machine, your text editor might replace all the CRs with LFs again. 
+If, for some reason, you want to make them all CRs again, run the following command (also in the ```scripts``` directory) after saving any changes to that file:
+
 ```
 python3 singlefile_cr.py path_to_file_you_changed
 ```
 
-Both of these scripts can be found in the SCRIPTS directory.
-
-## Injecting Files Straight Into the Image
-Unfortunately, we don't currently have a way do to this. Tom Frikker has written [this really cool program](https://github.com/tfrikker/lisa_utils/tree/master/srcBuilder) that can inject files into a Lisa-format DC42 image, but it only works with 5MB ProFiles at the moment, and he says that it can be a bit unstable sometimes. So unfortunately not yet suitable for transferring our files over, but this might be an excellent option if these two points get addressed.
-
-## Transferring Files Over Serial
-This is currently the only way that we can copy files straight to the 50MB ProFile volume. It takes forever, but it works, and it's how I did it.
-
-Connect a serial cable between Serial B on your Lisa and a modern computer (you'll probably need a USB to serial adapter here). Then open Preferences on the Lisa by choosing S)ystem manager P)references in the Workshop. Choose "Connect Devices", select Serial B, and choose "Serial Cable" from the menu that appears. Then quit out of Preferences and hit Q to return to the main Workshop menu. 
-
-Now fire up the serial transfer program in the Workshop by pressing T and choose the appropriate serial port from the Connector menu. Then go to the Baud Rate menu and choose 1200. Choose Even parity from the Parity menu and choose Xon/Xoff from the Handshake menu. Finally, choose Full duplex from the Duplex menu. 
-
-Then go to the modern computer, open up your favorite terminal software, and configure the settings appropriately (1200 baud, 7E1, Xon/Xoff handshaking, and of course pick the appropriate serial port). Now you're all set up to transfer files! 
-
-Make sure Receive All Text is selected from the Control menu on the Lisa and then choose Receive From Remote from this same menu. The Lisa will prompt you for the path at which you want to save the file, so type the appropriate path and hit enter. Then start sending the file through your terminal software on the modern computer. Once it's done, choose the Receive From Remote option again to finish the transfer.
-
-Note that an invisible character on the end of each file sometimes gets added during the transfer for some reason and angers the compiler, so if you get weird compiler errors complaining about the last line in the file, then you might have to open each problematic file in the Workshop editor, delete the last character of the last line, type it back again, and resave the file after you transfer it over. I think I fixed this issue by changing the process_source Python script, but email me if this is still a problem!
-
-Now repeat for around 1,000 more files! Easy, right?
+Not that it really matters though since the serial transfer program already converts them on the fly!
 
 ## File-Copying Rules
-As a general rule, ignore the directory structure of the source release when structuring the files on the Lisa. The source release often has extra directory levels or directories with different names from what they should be on the Lisa. Use the filenames themselves for guidance on what to name the files, interpreting the "-" characters as slashes in the pathname. So for instance, you'd save the file APPS/APBG/apbg-BG.TEXT as APBG/BG.TEXT on the Lisa, and you'd save LISA_OS/OS/SOURCE-2PORTCARD.TEXT as SOURCE/2PORTCARD.TEXT on the Lisa. You can probably see that I also like saving all the files in all caps, but the Lisa FS isn't case-sensitive so this is completely up to you.
+As a general rule, we ignore the directory structure of the source release when structuring the files on the Lisa. The source release often has extra directory levels or directories with different names from what they should be on the Lisa. So we just use the filenames themselves for guidance on what to name the files, interpreting the "-" characters (and occasional "." characters) as slashes in the pathname. So for instance, we'd save the file APPS/APBG/apbg-BG.TEXT as APBG/BG.TEXT on the Lisa, and we'd save LISA_OS/OS/SOURCE-2PORTCARD.TEXT as SOURCE/2PORTCARD.TEXT on the Lisa. You can probably see that I also like saving all the files in all caps, but the Lisa FS isn't case-sensitive so it really doesn't matter.
 
-If you get any errors during the build process, then the first thing to check for is incorrectly-named or missing files. It's easy to get something wrong when you're dealing with this many files!
+Once again, my serial transfer script will handle all the file-renaming for you, so don't worry about any of these renaming conventions unless you're creating files manually or something.
 
-There's also a chance that I might've renamed a file or two during the copying process (I have a vague memory of correcting a typo in a filename or something), but I can't remember for sure. If you're sure that you copied everything over properly, but the Workshop still complains about a missing file, let me know and I'll fix this ASAP!
+There's also a chance that I might've renamed a file or two during the copying process beyond what I mentioned above (I have a vague memory of correcting a typo in a filename or something), but I can't remember for sure. If you've used the script to copy everything over, but the Workshop still complains about a missing file, let me know and I'll fix this ASAP!
 
 ## What You Need To Copy Over
 - Everything in the APPS folder.
@@ -339,8 +324,37 @@ There's also a chance that I might've renamed a file or two during the copying p
 - Anything in LISA_OS/OS exec files. We've remade all these from scratch.
 - Anything in Lisa_Toolkit. This is a combination of duplicate files from LIBTK and the ToolKit University disks, which contain no source code.
 
+Don't worry, the serial transfer script will automatically copy over the things you need and exclude the things you don't, so this info is also just for reference!
+
+So now let's actually talk about the transfer script! The program is called ```lisa_serial_transfer.py``` and you can find it in the ```scripts``` directory. It works by taking control of the Workshop's console over serial, and then uses the Workshop COPY utility to transfer characters straight into a text file, repeating this for each file you want to send.
+
+Before you try to run the transfer tool, you'll need to install the Pyserial library. So, assuming you've got Python installed, you can do that by typing:
+
+```pip3 install pyserial```
+
+Now connect a serial cable between Serial B on your Lisa and your modern computer (you'll probably need a USB to serial adapter here). You can run the serial transfer tool by doing:
+
+```python3 lisa_serial_transfer.py <serial_port> <directory_or_file_to_send>```
+
+Notice that you can specify either a single file or an entire directory to send to the Lisa. For getting all the code over to the Lisa for the first time, you'll want to specify a directory, probably ```Lisa_Source/``` unless you've renamed things in your copy of the code. But later on once you're making changes to the code, you can also just specify a single file if you broke the copy that's on your Lisa, prefer to do all your editing on a modern machine, or whatever else the case may be.
+
+Before the transfer starts, it'll ask you to run the EXEC file ```ALEX/TRANSFER.TEXT``` on your Lisa to configure the serial port and put the Lisa into remote console mode. So go ahead and hit R for Run from the main Workshop screen, and then type:
+```<ALEX/TRANSFER.TEXT```
+
+Now hit return on your modern computer once the Lisa's screen goes blank, and the transfer should start!
+
+As the file(s) are transferred, you'll see the text echoed back from the Lisa live on the console, as well as a status bar at the top of the screen showing you the progress of the current file, the entire transfer if you're doing multiple files, and ETAs for everything:
+
+PICTURE
+
+The program will also create a log file called log.txt where it will print some info about each file as it gets transferred, including any errors that occur (a character being echoed back from the Lisa that doesn't match what we sent). For each error event, the expected and actual echo values will be recorded, as well as the line number in the file at which the error occurred, which should allow you to easily find and correct the bad character! I've simulated an error in the following screenshot so you can see what it looks like:
+
+PICTURE
+
+There's a chance that you'll experience another kind of error where the Lisa stops echoing back anything that gets sent to it. In this case, the transfer program will print out a message asking you to reboot your Lisa and run the ALEX/TRANSFER script again, at which point it'll try to retransfer whatever file it was working on at the time of the failure. This error is most likely to occur if you have a cheap USB to serial converter, so if you're getting it a lot, then consider upgrading to a higher-end model.
+
 # Fixes to Source Files
-Now that we've copied all the code onto the Lisa, some of the LOS source files need modifications in order to build properly. Many of these stem from the fact that some of the unique characters in the Lisa's extended charset get corrupted when transferred over serial, but some are caused by other things too. If you're directly injecting the files into your disk image using some sort of Lisa file system tool, then you probably won't need to fix any corrupt characters, so you can likely disregard the Character-Related Fixes section and only make the changes in the Actual Code Changes section. But if you're transferring over serial, then you'll need to make the modifications described in both sections. When doing the character fixes, if you can't figure out how to type some of the weird characters (which is definitely going to happen), just copy-paste the character from the ALLCHARS.TEXT file in the root of the disk image.
+Now that we've copied all the code onto the Lisa, some of the LOS source files need modifications in order to build properly. Many of these stem from the fact that some of the unique characters in the Lisa's extended charset get corrupted when transferred over serial, but some are caused by other things too. When doing the character fixes, if you can't figure out how to type some of the weird characters (which is definitely going to happen), just copy-paste the character from the ALLCHARS.TEXT file in the root of the disk image.
 
 ## Why No Xdiffs?
 I had a couple suggestions to distribute the changes in the form of xdiffs, but I ultimately decided against this for one big reason. Many of the fixes can only be implemented on the Lisa itself since the characters in question can only be typed on the Lisa. And xdiff doesn't run on the Lisa, so distributing them that way would be pretty useless. And it felt weird to distribute some as xdiffs and others as descriptions of changes, so I just decided to eliminate the xdiffs entirely. With that in mind, here they are:
@@ -564,3 +578,4 @@ We've talked about a bunch of files throughout this document, let's conclude thi
 
 # Changelog
 - 6/28/2025 - Initial Release
+- 7/24/2025 - Added ```lisa_serial_transfer.py```, a script for easily transferring the source files over to the Lisa. Also updated the disk image and ```src``` directory with a new ```ALEX/TRANSFER.TEXT``` script, an ```ALEX/ASM/LIBSM.TEXT``` script that was previously missing, and a fixed version of ```ALEX/COMP/LIBOS```.

@@ -1,0 +1,15 @@
+$EXEC
+{Assembles the LIBSM library}
+
+{Delete anything left over from prev build}
+F{ilemgr}D{elete}LIBSM/UNIT68K.OBJ
+Y{es}Q{uit}
+
+$SUBMIT BUILD/ASSEMB(LIBSM/UNIT68K)
+
+R{un}CHANGESEG
+LIBSM/UNIT68K
+Y{es, map all segments}WORKSET
+
+$ENDEXEC
+
