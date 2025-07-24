@@ -345,11 +345,11 @@ Now hit return on your modern computer once the Lisa's screen goes blank, and th
 
 As the file(s) are transferred, you'll see the text echoed back from the Lisa live on the console, as well as a status bar at the top of the screen showing you the progress of the current file, the entire transfer if you're doing multiple files, and ETAs for everything:
 
-PICTURE
+<img width="1613" height="1050" alt="SCR-20250724-nhyr" src="https://github.com/user-attachments/assets/4ea002ac-073b-4b32-b473-dc5b912d260b" />
 
 The program will also create a log file called log.txt where it will print some info about each file as it gets transferred, including any errors that occur (a character being echoed back from the Lisa that doesn't match what we sent). For each error event, the expected and actual echo values will be recorded, as well as the line number in the file at which the error occurred, which should allow you to easily find and correct the bad character! I've simulated an error in the following screenshot so you can see what it looks like:
 
-PICTURE
+<img width="857" height="205" alt="SCR-20250723-qskm" src="https://github.com/user-attachments/assets/99fdba5f-e209-40e6-9419-dfe8a2a25dff" />
 
 There's a chance that you'll experience another kind of error where the Lisa stops echoing back anything that gets sent to it. In this case, the transfer program will print out a message asking you to reboot your Lisa and run the ALEX/TRANSFER script again, at which point it'll try to retransfer whatever file it was working on at the time of the failure. This error is most likely to occur if you have a cheap USB to serial converter, so if you're getting it a lot, then consider upgrading to a higher-end model.
 
