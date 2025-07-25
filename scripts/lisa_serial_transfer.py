@@ -6,6 +6,8 @@ import os
 echo_timeout = 5 # How long to wait for an echo from the Lisa before printing a warning.
 empty_echo_threshold = 5 # How many empty echoes we can receive before we ask the user to reboot the Lisa.
 bar_length = 40 # Length of the progress bars on the status line.
+state_timeout = 10 # How long to wait for confirmation from the Lisa that we've reached each menu state.
+buffer_timeout = 120 # How long to wait for the Lisa to raise DSR before we get worried.
 
 # Paths that contain files that we don't need to send to the Lisa.
 bad_paths = ['DICT', 'LISA_OS/APIN', 'LISA_OS/BUILD', 'LISA_OS/FONTS', 'LISA_OS/LIBHW', 'LISA_OS/Linkmaps 3.0', 'LISA_OS/Linkmaps and Misc. 3.0', 'LISA_OS/OS exec files', 'Lisa_Toolkit']
@@ -37,7 +39,7 @@ def ms(seconds):
     return f"{minutes:02}:{secs:02}"
 
 # Prints a progress bar at the top of the screen, showing current file progress and total progress.
-def print_progress_bar(filename, current_file, total_filecnt, current_char, total_chars, size, start_time):
+def print_progress_bar(filename, current_file, total_filecnt, current_char, total_chars, size, start_time, dsr_wait):
     global bytes_sent
     file_percent = (current_char / total_chars) * 100 # Percentage of the current file that has been sent.
     file_filled_length = int(bar_length * current_char // total_chars) # Figure out how much of the progress bar to fill.
@@ -52,34 +54,54 @@ def print_progress_bar(filename, current_file, total_filecnt, current_char, tota
     sys.stdout.write('\033[2K') # And clear the line.
 
     if directory: # If we're sending a directory (multiple files), show current file progress and total progress.
-        sys.stdout.write(f'Sending file {current_file}/{total_filecnt}: {filename} [{file_bar}] {file_percent:.2f}% Elapsed: {ms(time.time() - start_time)} ETA: {ms((time.time() - start_time) * (total_chars - current_char) / max(current_char, 1))} CPS: {(current_char / ((time.time() - start_time))):.1f}           Total Progress: [{total_bar}] {total_percent:.2f}% Elapsed: {hms(time.time() - global_start_time)} ETA: {hms((time.time() - global_start_time) * (size - bytes_sent) / max(bytes_sent, 1))}\r')
+        sys.stdout.write(f'Sending file {current_file}/{total_filecnt}: {filename} [{file_bar}] {file_percent:.2f}% Elapsed: {ms(time.time() - start_time)} ETA: {ms((time.time() - start_time) * (total_chars - current_char) / max(current_char, 1))} CPS: {(bytes_sent / ((time.time() - global_start_time))):.1f}   Total Progress: [{total_bar}] {total_percent:.2f}% Elapsed: {hms(time.time() - global_start_time)} ETA: {hms((time.time() - global_start_time) * (size - bytes_sent) / max(bytes_sent, 1))}\n')
     else: # Otherwise, just show the current file progress.
-        sys.stdout.write(f'Sending file {current_file}/{total_filecnt}: {filename} [{file_bar}] {file_percent:.2f}% Elapsed: {ms(time.time() - start_time)} ETA: {ms((time.time() - start_time) * (total_chars - current_char) / max(current_char, 1))} CPS: {(current_char / ((time.time() - start_time))):.1f}\r')
-    
+        sys.stdout.write(f'Sending file {current_file}/{total_filecnt}: {filename} [{file_bar}] {file_percent:.2f}% Elapsed: {ms(time.time() - start_time)} ETA: {ms((time.time() - start_time) * (total_chars - current_char) / max(current_char, 1))} CPS: {(bytes_sent / ((time.time() - global_start_time))):.1f}\n')
+    if dsr_wait:
+        sys.stdout.write('██████████████████████████████████████████ \033[5mWAITING FOR LISA TO CATCH UP....\033[0m ██████████████████████████████████████████') 
+
     sys.stdout.write('\0338') # Restore the cursor position to where it was before.
     sys.stdout.flush()
 
 # Configures the Lisa to receive a file, and sends the file byte by byte.
 def send_single_file(file_path, filename):
     global bytes_sent
-    errors = 0 # The number of transmission errors (echoes that didn't match the sent byte).
+    # errors = 0 # The number of transmission errors (echoes that didn't match the sent byte).
     print('\n')
     print(f'Starting to send file {filename}...') # Tell the user what we're doing.
     print('\n')
-    print_progress_bar(filename, total_files - len(path_list), total_files, 0, os.path.getsize(file_path), size, time.time()) # Initial progress bar.
-    log_file.write(f'{filename} ({total_files - len(path_list)}/{total_files}): ') # Put the Lisa filename in the log file.
+    print_progress_bar(filename, total_files - len(path_list), total_files, 0, os.path.getsize(file_path), size, time.time(), False) # Initial progress bar.
+    log_file.write(f'{file_path} ({total_files - len(path_list)}/{total_files}): ') # Put the Lisa filename in the log file.
     log_file.flush()
 
     start_time = time.time() # Get the start time of the transfer.
-    lisa.write(b'rcopy\r>' + filename.encode('mac-roman') + b'\r') # Tell the Lisa to r{un} the copy tool, giving it the Lisa-formatted filename that we want to save to.
-    lisa.read(200) # Wait for the Lisa to catch up by reading some bytes.
+    lisa.write(b'rcopy\r<-KEYBOARD >' + filename.encode('mac-roman') + b'\r') # Tell the Lisa to r{un} the copy tool, giving it the Lisa-formatted filename that we want to save to.
+    state_start = time.time()
+    message = ''
+    while filename + '\r' not in message: # Wait for the Lisa to echo back the end of the copy string we sent it, just to make sure it's caught up.
+        message = message + lisa.read().decode('mac-roman')
+        if time.time() - state_start > state_timeout: # If it doesn't echo back in state_timeout seconds, print a warning to the console and logfile.
+            print('WARNING: Lisa never acknowledged our COPY command!')
+            log_file.write('\nWARNING: Lisa never acknowledged our COPY command! ')
+            log_file.flush()
+            break
     try:
         with open(file_path, 'rb') as source_file: # Now open the file we want to send.
             line_count = 1 # Line counter for error reporting.
-            echo_counter = 0 # Number of empty echoes received, used to determine if we need to reboot the Lisa.
-            prev_sent = bytes_sent # Previous bytes sent, used to to roll back the progress bar if we have to retry sending the file.
+            # echo_counter = 0 # Number of empty echoes received, used to determine if we need to reboot the Lisa.
+            # prev_sent = bytes_sent # Previous bytes sent, used to to roll back the progress bar if we have to retry sending the file.
             while (byte := source_file.read(1)): # Read the file byte by byte.
-                bytes_sent += 1 # And increment the total bytes sent; used for the total progress bar.
+                state_start = time.time()
+                # Flow control in Pyserial is broken, so we have to check DSR manually. If it's low, we need to block until the Lisa's done processing data.
+                while not lisa.dsr:
+                    # So say that we're waiting for the Lisa in the progress bar.
+                    print_progress_bar(filename, total_files - len(path_list), total_files, source_file.tell(), os.path.getsize(file_path), size, start_time, True)
+                    if time.time() - state_start > buffer_timeout: # And if it's not done processing in buffer_timeout seconds, print a warning.
+                        print('\nWARNING: Lisa is taking forever to empty its buffer, probably hung!')
+                        log_file.write('\nWARNING: Lisa is taking forever to empty its buffer, probably hung! ')
+                        log_file.flush()
+                        break
+                bytes_sent += 1 # We're allowed to transmit now, so increment the total bytes sent; used for the total progress bar.
                 if byte == b'\xFF': # Each file has a garbage FF byte at the end, which we don't want to send.
                     break
                 if byte == b'\r': # Check for \r\n line endings, and convert them to just \r.
@@ -94,7 +116,10 @@ def send_single_file(file_path, filename):
                 if byte == b'\r': # If we encounter a \r, increment the line count.
                     line_count += 1
                 lisa.write(byte) # And now send the byte to the Lisa.
-                echo = lisa.read() # Read the echoed byte from the Lisa.
+
+                # The following commented-out code was from when we copying data from the -CONSOLE (which gives an echo).
+                # Now we're copying from -KEYBOARD, which does not. So there's no need/no way to validate any echos.
+                '''echo = lisa.read() # Read the echoed byte from the Lisa.
                 timeout_start = time.time() # And start a timer to see if we get an echo back in time.
                 while echo != byte: # If the echoed byte doesn't match the sent byte, keep reading until it does.
                     echo = lisa.read()
@@ -108,6 +133,7 @@ def send_single_file(file_path, filename):
                             print('\n')
                             input('ERROR: The Lisa did not respond with an echo! Go ahead and reboot it, run the EXEC file ALEX/TRANSFER.TEXT again, and hit RETURN on this computer to try sending this file again...')
                             print('\n')
+                            print_progress_bar(filename, total_files - len(path_list), total_files, source_file.tell(), os.path.getsize(file_path), size, start_time)
                             log_file.write('\nERROR: The Lisa did not respond with an echo! Retrying transfer after reboot...')
                             log_file.flush()
                             errors = 0 # Reset all our transfer variables.
@@ -135,35 +161,91 @@ def send_single_file(file_path, filename):
                             if not byte.decode('mac-roman').isprintable(): # If the byte isn't printable, then it might not be a problem.
                                 log_file.write('This happened on an unprintable character, so it might not be a problem. ')
                             log_file.flush()
-                            break
+                            break'''
 
                 # Update the progress bar after each byte is sent.
-                print_progress_bar(filename, total_files - len(path_list), total_files, source_file.tell(), os.path.getsize(file_path), size, start_time)
-                # And print the echoed byte to the terminal so the user can see what's going on.
-                print(echo.decode('mac-roman') if echo != b'\r' else '\n', end='')
-
-        lisa.read(200) # Wait for the Lisa to catch up again.
+                print_progress_bar(filename, total_files - len(path_list), total_files, source_file.tell(), os.path.getsize(file_path), size, start_time, False)
+                # And print the byte to the terminal so the user can see what's going on.
+                print(byte.decode('mac-roman') if byte != b'\r' else '\n', end='')
 
     except KeyboardInterrupt: # If the user interrupts the transfer, we need to make sure that they have control over the Lisa again.
         print('\n')
-        print('Transfer interrupted by user. Returning control to the Lisa...')
-        lisa.read(200) # Wait for the Lisa to catch up.
+        print('Transfer interrupted by user. Returning control to the Lisa.')
+        print('This could take a minute or two (literally) if the Lisa\'s buffer is full...')
+        log_file.write('Transfer interrupted by user!')
+        log_file.flush()
+        state_start = time.time()
+        print_progress_bar(filename, total_files - len(path_list), total_files, 0, 1, size, time.time(), True)
+        while not lisa.dsr: # Wait for the Lisa to be ready for our 'end of transfer' commands, just like above.
+            if time.time() - state_start > buffer_timeout:
+                print('WARNING: Lisa is taking forever to empty its buffer, probably hung!')
+                log_file.write('\nWARNING: Lisa is taking forever to empty its buffer, probably hung! ')
+                log_file.flush()
+                break
         lisa.write(b'\x0E\x0D\x0D') # Send the end-of-file sequence to the Lisa.
-        lisa.read(200) # Wait for the Lisa to catch up again.
+        message = ''
+        state_start = time.time()
+        print_progress_bar(filename, total_files - len(path_list), total_files, 0, 1, size, time.time(), True)
+        while 'That\'s all folks!' not in message: # Wait for the Lisa to save the file; we know it's done when we see 'That's all folks!'
+            message = message + lisa.read().decode('mac-roman')
+            if time.time() - state_start > buffer_timeout: # If it doesn't save in buffer_timeout seconds, print a warning.
+                print('WARNING: Lisa never acknowledged our EOF command!')
+                log_file.write('\nWARNING: Lisa never acknowledged our EOF command! ')
+                log_file.flush()
+                break
         lisa.write(b'scmy') # Return control of the Lisa to the user by doing a s{ystem-mgr}c{onsole}m{ain}y{es}.
-        lisa.read(200) # And give it some time to process things.
+        message = ''
+        print_progress_bar(filename, total_files - len(path_list), total_files, 0, 1, size, time.time(), True)
+        state_start = time.time()
+        while 'Console to Main' not in message: # Once again, wait for the Lisa to execute our command and print a warning if it doesn't.
+            message = message + lisa.read().decode('mac-roman')
+            if time.time() - state_start > state_timeout:
+                print('WARNING: Lisa never acknowledged our \'return control to user\' command!')
+                log_file.write('\nWARNING: Lisa never acknowledged our \'return control to user\' command! ')
+                log_file.flush()
+                break
         lisa.close() # Close the serial port.
+        sys.stdout.write('\0337') # Don't forget to remove the annoying "Waiting for transfer to complete" message!
+        sys.stdout.write('\033[1;1H')
+        sys.stdout.write('\033[1B\033[2K')
+        sys.stdout.write('\0338')
+        print('You should have control over your Lisa again!')
+        print()
+        log_file.write(f'\nEnding at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}.\n')
+        log_file.close()
         sys.exit(0)
 
+    # This code executes at the end of a file transfer; it's very similar to the code from the Except above.
+    lisa.flush()
+    state_start = time.time()
+    while not lisa.dsr: # Wait for the Lisa to finish processing its data buffer.
+        print_progress_bar(filename, total_files - len(path_list), total_files, os.path.getsize(file_path), os.path.getsize(file_path), size, start_time, True)
+        if time.time() - state_start > buffer_timeout:
+            print('\nWARNING: Lisa is taking forever to empty its buffer, probably hung!')
+            log_file.write('\nWARNING: Lisa is taking forever to empty its buffer, probably hung! ')
+            log_file.flush()
+            break
     lisa.write(b'\x0E\x0D\x0D') # And then send the end-of-file sequence to the Lisa.
-    lisa.read(200) # Wait again...
-    print('\n')
+    message = ''
+    state_start = time.time()
+    while 'That\'s all folks!' not in message: # Wait for the Lisa to save and close the file.
+        print_progress_bar(filename, total_files - len(path_list), total_files, os.path.getsize(file_path), os.path.getsize(file_path), size, start_time, True)
+        message = message + lisa.read().decode('mac-roman')
+        if time.time() - state_start > buffer_timeout:
+            print('WARNING: Lisa never acknowledged our EOF command!')
+            log_file.write('\nWARNING: Lisa never acknowledged our EOF command! ')
+            log_file.flush()
+            break
     # And print a success message to the terminal.
-    print(f'Finished sending file {filename}. Transmission took {ms(time.time() - start_time)} with {errors} error(s).')
+    print()
+    print(f'Finished sending file {filename}. Transmission took {ms(time.time() - start_time)}.')
     # Make sure the progress bar stays on the screen.
-    print_progress_bar(filename, total_files - len(path_list), total_files, os.path.getsize(file_path), os.path.getsize(file_path), size, start_time)
+    print_progress_bar(filename, total_files - len(path_list), total_files, os.path.getsize(file_path), os.path.getsize(file_path), size, start_time, False)
     log_file.write(f'Finished in {ms(time.time() - start_time)}.\n') # And write the success to the log file too.
     log_file.flush()
+
+
+# ----------------------------------------------- Start of main program!!! -----------------------------------------------
 
 if len(sys.argv) != 3: # Make sure the user provided both a serial port and a file or directory to transmit.
     print(f'Usage: python3 {sys.argv[0]} <serial_port> <directory_or_file_to_send>')
@@ -206,8 +288,6 @@ else: # If we're here, the user provided a single file to send.
         print(f'Error: {file_or_dir} is not a .TEXT or .UNIX.TXT file!')
         sys.exit(1)
 
-# ----------------------------------------------- Start of main program!!! -----------------------------------------------
-
 sys.stdout.write('\033[2J') # Clear the terminal screen.
 sys.stdout.flush()
 
@@ -220,15 +300,23 @@ except:
     print(f'Error: Failed to open serial port {sys.argv[1]}!')
     sys.exit(1)
 
-lisa.read(200) # The Lisa might send us some stuff when we connect, so read it to clear the buffer.
-# To get into a known state, send the Lisa a q{uit}q{uit}n{o, don't exit the shell}. Regardless of where we are, this should get us to the main Workshop screen.
-lisa.write(b'qqn')
-lisa.read(200) # Wait for the Lisa to catch up again.
-
 log_file = open('log.txt', 'w') # Open our log file for writing.
 log_file.write(f'About to transmit {total_files} file(s).\n') # And write the total number of files to send.
 log_file.write(f'Starting at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}.\n') # As well as the start time.
 log_file.flush()
+
+# To get into a known state, send the Lisa a q{uit}q{uit}n{o, don't exit the shell}. Regardless of where we are, this should get us to the main Workshop screen.
+lisa.write(b'qqn')
+message = ''
+state_start = time.time()
+while 'No' not in message: # Wait for the Lisa to echo back a 'No', indicating that we're in the right state.
+    message = message + lisa.read().decode('mac-roman')
+    if time.time() - state_start > state_timeout: # If we don't get the echo in state_timeout seconds, print a warning.
+        print('WARNING: Lisa never acknowledged our \'return to known state\' command!')
+        log_file.write('WARNING: Lisa never acknowledged our \'return to known state\' command!\n')
+        log_file.flush()
+        break
+time.sleep(1)
 
 global_start_time = time.time() # Get the global start time for the entire transmission.
 
@@ -244,12 +332,25 @@ if directory: # If we're sending a directory, we need to send each file in the p
 else: # We're sending a single file, so we can just send it directly without any looping.
     send_single_file(path_list.pop(0), name_list.pop(0))
 
+lisa.write(b'scmy') # Return control of the Lisa to the user by doing a s{ystem-mgr}c{onsole}m{ain}y{es}.
+
+message = ''
+state_start = time.time()
+while 'Console to Main' not in message: # Wait for the Lisa to execute our 'return control' command.
+    message = message + lisa.read().decode('mac-roman')
+    if time.time() - state_start > state_timeout: # And timeout if it doesn't.
+        print('WARNING: Lisa never acknowledged our \'return control to user\' command!')
+        log_file.write('WARNING: Lisa never acknowledged our \'return to known state\' command!\n')
+        log_file.flush()
+        break
+
 # Close out the log file with the end time.
 log_file.write(f'Ending at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}.\n')
 log_file.close()
-
-lisa.write(b'scmy') # Return control of the Lisa to the user by doing a s{ystem-mgr}c{onsole}m{ain}y{es}.
-lisa.read(200) # And give it some time to process things.
+sys.stdout.write('\0337') # Don't forget to remove the annoying "Waiting for transfer to complete" message!
+sys.stdout.write('\033[1;1H')
+sys.stdout.write('\033[1B\033[2K')
+sys.stdout.write('\0338')
 print('All done, you should have control over your Lisa again!') # And now we're done!!!
 print()
 lisa.close()

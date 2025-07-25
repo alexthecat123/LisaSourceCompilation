@@ -336,22 +336,22 @@ Now connect a serial cable between Serial B on your Lisa and your modern compute
 
 ```python3 lisa_serial_transfer.py <serial_port> <directory_or_file_to_send>```
 
-Notice that you can specify either a single file or an entire directory to send to the Lisa. For getting all the code over to the Lisa for the first time, you'll want to specify a directory, probably ```Lisa_Source/``` unless you've renamed things in your copy of the code. But later on once you're making changes to the code, you can also just specify a single file if you broke the copy that's on your Lisa, prefer to do all your editing on a modern machine, or whatever else the case may be.
+Notice that you can specify either a single file or an entire directory to send to the Lisa. For getting all the code over to the Lisa for the first time, you'll want to specify a directory, probably ```Lisa_Source/``` unless you've renamed things in your copy of the code. But later on once you're making changes to the code, you can also just specify a single file.
 
 Before the transfer starts, it'll ask you to run the EXEC file ```ALEX/TRANSFER.TEXT``` on your Lisa to configure the serial port and put the Lisa into remote console mode. So go ahead and hit R for Run from the main Workshop screen, and then type:
-```<ALEX/TRANSFER.TEXT```
+```<ALEX/TRANSFER.TEXT```.
 
 Now hit return on your modern computer once the Lisa's screen goes blank, and the transfer should start!
 
-As the file(s) are transferred, you'll see the text echoed back from the Lisa live on the console, as well as a status bar at the top of the screen showing you the progress of the current file, the entire transfer if you're doing multiple files, and ETAs for everything:
+As the file(s) are transferred, you'll see the text that's being transferred printed live to the console, as well as a status bar at the top of the screen showing you the progress of the current file, the entire transfer if you're doing multiple files, and ETAs for everything:
 
 <img width="1613" height="1050" alt="SCR-20250724-nhyr" src="https://github.com/user-attachments/assets/4ea002ac-073b-4b32-b473-dc5b912d260b" />
 
-The program will also create a log file called log.txt where it will print some info about each file as it gets transferred, including any errors that occur (a character being echoed back from the Lisa that doesn't match what we sent). For each error event, the expected and actual echo values will be recorded, as well as the line number in the file at which the error occurred, which should allow you to easily find and correct the bad character! I've simulated an error in the following screenshot so you can see what it looks like:
+The program will also create a log file called log.txt where it will print some info about each file as it gets transferred, including any errors that occur (the Lisa not responding properly to a command).
 
-<img width="857" height="205" alt="SCR-20250723-qskm" src="https://github.com/user-attachments/assets/99fdba5f-e209-40e6-9419-dfe8a2a25dff" />
+Note that the Lisa is pretty slow to process data coming to it over serial, so there's a lot of starting and stopping during the transfer process. We transfer about 8K of data, the Lisa deasserts DSR, and then we have to wait for it to process all the data before we can send more. So don't worry if the output freezes for a minute or two at a time while the "WAITING FOR LISA" message blinks at the top of the screen; that's totally normal and expected! If the freeze is concerningly long, the program will report an error.
 
-There's a chance that you'll experience another kind of error where the Lisa stops echoing back anything that gets sent to it. In this case, the transfer program will print out a message asking you to reboot your Lisa and run the ALEX/TRANSFER script again, at which point it'll try to retransfer whatever file it was working on at the time of the failure. This error is most likely to occur if you have a cheap USB to serial converter, so if you're getting it a lot, then consider upgrading to a higher-end model.
+Make sure that your USB to serial adapter supports DSR/DTR hardware handshaking, or else the program won't work! On macOS, some USB to serial adapters will show up as two different device entries, and only one of them supports hardware handshaking (normally the one with the longer name), so try both if you encounter this.
 
 # Fixes to Source Files
 Now that we've copied all the code onto the Lisa, some of the LOS source files need modifications in order to build properly. Many of these stem from the fact that some of the unique characters in the Lisa's extended charset get corrupted when transferred over serial, but some are caused by other things too. When doing the character fixes, if you can't figure out how to type some of the weird characters (which is definitely going to happen), just copy-paste the character from the ALLCHARS.TEXT file in the root of the disk image.
@@ -583,3 +583,4 @@ We've talked about a bunch of files throughout this document, so let's conclude 
 # Changelog
 - 7/9/2025 - Initial Release
 - 7/24/2025 - Added ```lisa_serial_transfer.py```, a script for easily transferring the source files over to the Lisa. Also updated the disk image and ```src``` directory with a new ```ALEX/TRANSFER.TEXT``` script, an ```ALEX/ASM/LIBSM.TEXT``` script that was previously missing, and a fixed version of ```ALEX/COMP/LIBOS```.
+- 7/25/2025 - Updated ```lisa_serial_transfer.py``` to use a larger buffer size, the -KEYBOARD instead of -CONSOLE, and a bunch of other tweaks. This has increased performance by a factor of two! Updated the disk imafe and ```ALEX/TRANSFER.TEXT``` accordingly too.

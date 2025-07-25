@@ -1,7 +1,10 @@
 $EXEC
 R{un}PORTCONFIG
 {RS-232}B0{No Parity}1{DTR Output Handshake}28800{Baud}
-1{Return Whatever Has Been Received}1{DTR Input Handshake}0{Flush Only}0{No Disconnect Detection}0{No Timeout}
+1{Return Whatever Has Been Received}1{DTR Input Handshake}2{Flush And Resize Buffer}8192{Buf Size}
+30{Low Threshold}
+8000{High Threshold}
+0{No Disconnect Detection}0{No Timeout}
 1{Automatic Linefeed Insertion}Y{es, configure the port!}
 
 S{ystem-mgr}C{onsole}R{s232}BY{es, move the console}
