@@ -1,0 +1,13 @@
+$EXEC
+
+P{ascal Compile}ALEX/RECEIVE.TEXT
+{No listing file}
+{Output same as input}
+
+L{inker}ALEX/RECEIVE.OBJ
+IOSPASLIB.OBJ
+{No more input files}
+{No listing file}
+ALEX/RECEIVE.OBJ {Output file}
+
+$ENDEXEC

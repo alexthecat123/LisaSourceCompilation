@@ -1,0 +1,80 @@
+PROGRAM RECEIVE;
+
+USES
+    {$U syscall}  syscall;
+
+LABEL 999;
+
+TYPE
+    byte = -128..127;
+
+VAR
+    portPath: pathname;
+    ecode: integer;
+    rawData: byte;
+    character: integer;
+    readCount: longint;
+    port: integer;
+    index: integer;
+    outString: string[255];
+    filename: string[255];
+    outFile: text;
+
+BEGIN
+    portPath := '-RS232B-MEOW';
+    open(ecode, portPath, port, [DRead]);
+    if ecode <> 0 then
+        begin
+            writeln('ERROR: Failed to open console! Ecode is: ', ecode);
+            exit(RECEIVE);
+        end;
+    write('Enter an output filename: ');
+    readln(filename);
+    rewrite(outFile, filename); 
+    ecode := ioresult;
+    if ecode <> 0 then
+        begin
+            writeln('ERROR: Failed to open output file! Ecode is: ', ecode);
+            exit(RECEIVE);
+        end;
+    writeln('Ready to receive data for file: ', filename);
+    index := 1;
+    while true do
+        begin
+            read_data(ecode, port, ord4(@rawData), 1, readCount, Sequential, 0);
+            if (ecode = 0) and (readCount = 1) then
+                begin
+                    if rawData < 0 then character := 256 + rawData
+                    else character := rawData;
+                    if character = 13 then
+                        begin
+                            if (ord(outString[1]) = 3) and (ord(outString[2]) = 3) and (ord(outString[3]) = 3) then goto 999;
+                            outString[0] := chr(index-1);
+                            index := 1;
+                            writeln(outFile, outString);
+                        end
+                    else
+                        begin
+                            outString[index] := chr(character);
+                            index := index + 1;
+                        end;
+                end;
+        end;
+999:
+    writeln('');
+    writeln('Received an EOF, saving file...');
+    close(outFile, lock);
+    ecode := ioresult;
+    if ecode <> 0 then
+        begin
+            writeln('ERROR: Failed to close output file! Ecode is: ', ecode);
+            exit(RECEIVE);
+        end;
+    close_object(ecode, port);
+    if ecode <> 0 then
+        begin
+            writeln('ERROR: Failed to close console! Ecode is: ', ecode);
+            exit(RECEIVE);
+        end;
+    writeln('That''s all folks!')
+END.

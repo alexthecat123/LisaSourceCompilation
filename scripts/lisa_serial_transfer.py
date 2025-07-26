@@ -75,14 +75,14 @@ def send_single_file(file_path, filename):
     log_file.flush()
 
     start_time = time.time() # Get the start time of the transfer.
-    lisa.write(b'rcopy\r<-KEYBOARD >' + filename.encode('mac-roman') + b'\r') # Tell the Lisa to r{un} the copy tool, giving it the Lisa-formatted filename that we want to save to.
+    lisa.write(b'ralex/receive\r'+ filename.encode('mac-roman') + b'\r') # Tell the Lisa to r{un} the receive tool, giving it the Lisa-formatted filename that we want to save to.
     state_start = time.time()
     message = ''
-    while filename + '\r' not in message: # Wait for the Lisa to echo back the end of the copy string we sent it, just to make sure it's caught up.
+    while 'Ready to receive data for file: ' + filename not in message: # Wait for the Lisa to say it's ready to receive data, just to make sure it's caught up.
         message = message + lisa.read().decode('mac-roman')
-        if time.time() - state_start > state_timeout: # If it doesn't echo back in state_timeout seconds, print a warning to the console and logfile.
-            print('WARNING: Lisa never acknowledged our COPY command!')
-            log_file.write('\nWARNING: Lisa never acknowledged our COPY command! ')
+        if time.time() - state_start > state_timeout: # If it doesn't respond in state_timeout seconds, print a warning to the console and logfile.
+            print('WARNING: Lisa never acknowledged our RECEIVE command!')
+            log_file.write('\nWARNING: Lisa never acknowledged our RECEIVE command! ')
             log_file.flush()
             break
     try:
@@ -167,6 +167,8 @@ def send_single_file(file_path, filename):
                 print_progress_bar(filename, total_files - len(path_list), total_files, source_file.tell(), os.path.getsize(file_path), size, start_time, False)
                 # And print the byte to the terminal so the user can see what's going on.
                 print(byte.decode('mac-roman') if byte != b'\r' else '\n', end='')
+            lisa.write(b'\r') # Just to be safe, make sure there's a \r at the end of the file; the compiler gets mad if not.
+
 
     except KeyboardInterrupt: # If the user interrupts the transfer, we need to make sure that they have control over the Lisa again.
         print('\n')
@@ -182,7 +184,7 @@ def send_single_file(file_path, filename):
                 log_file.write('\nWARNING: Lisa is taking forever to empty its buffer, probably hung! ')
                 log_file.flush()
                 break
-        lisa.write(b'\x0E\x0D\x0D') # Send the end-of-file sequence to the Lisa.
+        lisa.write(b'\x03\x03\x03\x0D') # Send the end-of-file sequence to the Lisa.
         message = ''
         state_start = time.time()
         print_progress_bar(filename, total_files - len(path_list), total_files, 0, 1, size, time.time(), True)
@@ -225,7 +227,7 @@ def send_single_file(file_path, filename):
             log_file.write('\nWARNING: Lisa is taking forever to empty its buffer, probably hung! ')
             log_file.flush()
             break
-    lisa.write(b'\x0E\x0D\x0D') # And then send the end-of-file sequence to the Lisa.
+    lisa.write(b'\x03\x03\x03\x0D') # And then send the end-of-file sequence to the Lisa.
     message = ''
     state_start = time.time()
     while 'That\'s all folks!' not in message: # Wait for the Lisa to save and close the file.

@@ -13,7 +13,7 @@ Four things!
 - ```glue.c``` is a replacement for LisaEm's standard glue.c that will allow your custom copy of LOS to function in LisaEm, even after you've replaced the stock copy of SYSTEM.OS with your own. We'll talk about why this is necessary later.
 
 # What's not in this repo?
-The actual LOS source code itself. Thanks to Apple's really weird license on the code, I can't share it here. So you'll have to copy it into my disk image, make changes to some of the files, and then use my build scripts to build everything. But don't worry, all the info needed to do all of this (and a script to help with the copy process) is right here!
+The actual LOS source code itself. Thanks to Apple's really weird license on the code, I can't share it here. So you'll have to patch some of the source files, copy everything into my disk image, and then use my build scripts to build everything. But don't worry, all the info needed to do all of this (and scripts that you can use to automate pretty much the entire process) is right here!
 
 # Source Code Structure and the Lisa OS Architecture
 The LOS source code can be divided into 3 main parts. Going from highest level of abstraction to lowest level of abstraction, these are:
@@ -293,10 +293,19 @@ A note: If you ever change one of the source files on a modern machine, your tex
 If, for some reason, you want to make them all CRs again, run the following command (also in the ```scripts``` directory) after saving any changes to that file:
 
 ```
-python3 singlefile_cr.py path_to_file_you_changed
+python3 singlefile_cr.py <path_to_file_you_changed>
 ```
 
 Not that it really matters though since the serial transfer program already converts them on the fly!
+
+## Applying Some Patches
+Some of the source files need to be patched before they'll compile properly. You used to have to do this manually, but I've now written a Python script (once again in the ```scripts``` directory) that will do all 80-something patches for you! Just run:
+
+```
+python3 patch_files.py <path_to_lisa_source_code_directory>
+```
+
+If it doesn't say that it successfully applied all of the patches, then look back through all the output for any warnings that might've appeared. If you can't figure out why a particular patch wasn't applied, email me and we can figure it out! Note that your copy of the code will NOT compile and work properly unless all of these patches are completed successfully.
 
 ## File-Copying Rules
 As a general rule, we ignore the directory structure of the source release when structuring the files on the Lisa. The source release often has extra directory levels or directories with different names from what they should be on the Lisa. So we just use the filenames themselves for guidance on what to name the files, interpreting the "-" characters (and occasional "." characters) as slashes in the pathname. So for instance, we'd save the file APPS/APBG/apbg-BG.TEXT as APBG/BG.TEXT on the Lisa, and we'd save LISA_OS/OS/SOURCE-2PORTCARD.TEXT as SOURCE/2PORTCARD.TEXT on the Lisa. You can probably see that I also like saving all the files in all caps, but the Lisa FS isn't case-sensitive so it really doesn't matter.
@@ -326,7 +335,9 @@ There's also a chance that I might've renamed a file or two during the copying p
 
 Don't worry, the serial transfer script will automatically copy over the things you need and exclude the things you don't, so this info is also just for reference!
 
-So now let's actually talk about the transfer script! The program is called ```lisa_serial_transfer.py``` and you can find it in the ```scripts``` directory. It works by taking control of the Workshop's console over serial, and then uses the Workshop COPY utility to transfer characters straight into a text file, repeating this for each file you want to send.
+So now let's actually talk about the transfer script! The program is called ```lisa_serial_transfer.py``` and you can find it in the ```scripts``` directory. It works by taking control of the Workshop's console over serial, and then uses a special Workshop utility I wrote to transfer characters straight into a text file, repeating this for each file you want to send. 
+
+The COPY program that comes with the Workshop is almost perfect for this as-is, except that it uses the file-reading code from LIBPL, which annoyingly strips the high bit from all characters if it detects that they're being received over serial. So I had to write my own utility that uses the OS file-management routines instead and keeps that high bit intact. If you're curious about it, you can find the source code in ALEX/RECEIVE.TEXT, and the binary is ALEX/RECEIVE.OBJ. But I'd advise against running the binary manually unless you fully understand how it works; you'll probably lock up your Lisa and have to hit the reset button!
 
 Before you try to run the transfer tool, you'll need to install the Pyserial library. So, assuming you've got Python installed, you can do that by typing:
 
@@ -354,10 +365,11 @@ Note that the Lisa is pretty slow to process data coming to it over serial, so t
 Make sure that your USB to serial adapter supports DSR/DTR hardware handshaking, or else the program won't work! On macOS, some USB to serial adapters will show up as two different device entries, and only one of them supports hardware handshaking (normally the one with the longer name), so try both if you encounter this.
 
 # Fixes to Source Files
-Now that we've copied all the code onto the Lisa, some of the LOS source files need modifications in order to build properly. Many of these stem from the fact that some of the unique characters in the Lisa's extended charset get corrupted when transferred over serial, but some are caused by other things too. When doing the character fixes, if you can't figure out how to type some of the weird characters (which is definitely going to happen), just copy-paste the character from the ALLCHARS.TEXT file in the root of the disk image.
+Now that I've written software to automate all of these fixes, the information below probably won't be interesting to very many people, but I figured I'd leave it here for the sake of documenting everything that I had to change to get LOS to compile. So if you're curious, then read on, but otherwise, feel free to skip this!
 
-## Why No Xdiffs?
-I had a couple suggestions to distribute the changes in the form of xdiffs, but I ultimately decided against this for one big reason. Many of the fixes can only be implemented on the Lisa itself since the characters in question can only be typed on the Lisa. And xdiff doesn't run on the Lisa, so distributing them that way would be pretty useless. And it felt weird to distribute some as xdiffs and others as descriptions of changes, so I just decided to eliminate the xdiffs entirely. Plus, having to make all the changes by hand will get you a lot more familiar with the source code and all the modifications that have to be made to get it to build! With that in mind, here they are:
+The Character-Related Fixes section describes all of the fixes I had to do thanks to the Lisa's special characters getting corrupted during serial transfers. The characters in the Lisa's extended character set have their high bit set, and I originally couldn't figure out how to prevent the Lisa from stripping the high bit during serial transfers, leading to corrupted special characters. But I've now written a custom serial receiver program (```ALEX-RECEIVE.TEXT```) that ```lisa_serial_transfer.py``` uses to copy everything over to your Lisa while preserving the high bit. So it's not a problem anymore!
+
+The Actual Code Changes section describes all the patches that I had to make to the source code itself in order to get it to build. So things like correcting typos, making new files, patching out the LisaWrite spellchecker, and so on. These are now all automated by the ```patch_files.py``` script that you run before copying things over to your Lisa.
 
 ## Character-Related Fixes
 - In APHP/HP.TEXT, find "divide sign" and replace the character in the quotes with the division sign (÷). Now make sure the character on the next line is a forward slash and replace the character on the line below that with the Lisa "diamond" character. Also find "A-A" and delete everything following it on that line. Then retype the rest of the line as " A.A A–A A'A".
@@ -394,8 +406,8 @@ I had a couple suggestions to distribute the changes in the form of xdiffs, but 
 - In APLC/LCFILER.TEXT, replace the occurrence of "{t2}" with "{t108}" and the occurrence of "{t3}" with "{t107}".
 - In APLC/MM/LEX.TEXT, replace the occurrence of "{t2}" with "{t108}" and the occurrence of "{t3}" with "{t107}".
 - In APLC/APPDIBOX.TEXT, replace the 5 instances of "{t3}" with "{t107}". Then find "inPutGrahics" and replace it with "inPutGraphics".
-- In APPW/BTNREAD.TEXT, replace 2 of the 3 instances of "t11" with "t109". Keep the "APPW/T11buttons" instance untouched.
-- In APPW/CONFIG.TEXT, replace the 4 instances of "{t11}" with "{t109}".
+- In APPW/BTNREAD.TEXT, replace the instance of "{t11}" with "{t109}". Also replace "appw/btnfile.text" with "appw/T11buttons.text".
+- In APPW/CONFIG.TEXT, replace the 6 instances of "{t11}" with "{t109}".
 - In APPW/PREFMAIN.TEXT, replace the 2 instances of "{t11}" with "{t109}".
 - In LIBDB/LMSCAN.TEXT, add the lines "{$SETC fSymOk := FALSE }" and "{$SETC fTRACE := FALSE }" right below the "{$SETC OSBUILT := TRUE }" line. Also search for "PROCEDURE diffWAdDelete" and replace it with "PROCEDURE diffWADelete".
 - In LIBFP/NEWFPLIB.TEXT, delete the line that says "{$I libFP/str2dec }" and replace it with "procedure Str2Dec; external;".
@@ -405,15 +417,14 @@ I had a couple suggestions to distribute the changes in the form of xdiffs, but 
 - In LIBPL/TFLDERCALL.TEXT, change the line ".include        paslibequs.text" to ".include        libpl/paslibequs.text".
 - In LIBQP/UBAUDRATE.TEXT, change the USES statement from "{$U -newdisk-QP/Hardware} Hardware;" to "{$U LIBQP/QP/Hardware} Hardware;".
 - In LIBTK/UTEXT.TEXT, change the USES statement reading "{$U UABC}" to "{$U libtk/UABC}".
-- In TKIN/SOURCE.TEXT, change the USES statements reading "{$U Tkin/Cat         }" and "{$U Tkin/Cat         }" to "{$U APDM/Cat         }" and "{$U APDM/Cat         }". 
+- In TKIN/SOURCE.TEXT, change the USES statements reading "{$U Tkin/Globals         }" and "{$U Tkin/Cat         }" to "{$U APDM/Globals         }" and "{$U APDM/Cat         }". 
 - In TKIN/ENTRY.TEXT, change the USES statement reading "{$U TKIN/Globals}" to "{$U APDM/Globals}".
 - In SOURCE/PROFILE.TEXT, find the line "if (discsize <= 9728) or (discsize > 30000)" and replace the 30000 with some really big number (I used 500000).
 - In SOURCE/DRIVERDEFS.TEXT, find the "$SETC DEBUG1" and "$SETC TWIGGYBUILD" statements. Change them both from TRUE to FALSE.
 - In SOURCE/PASCALDEFS.TEXT, find the "DEBUG1          .EQU    1" and "TWIGGYBUILD     .EQU    1" statements. Change the 1's after the .EQU's to 0's.
 - Copy (don't move) SOURCE/PASMATH.TEXT to LIBPL/PASMATH.TEXT.
-- In LIBPL/PASMATH.TEXT (the new file you just created), scroll to the bottom and add the line ".include libpl/pwrii.text" right above the ".END" line.
-- Open SOURCE/OSINTPASLIB.TEXT, and copy the PASMOVE section (everything starting at the comment "; File: PASMOVE.TEXT" and ending right above the comment "; File: PASRANGE.TEXT"). Make a new file in the Editor (File->Tear off Stationery, then hit enter) and paste 
-this text into it. Then save the file as LIBPL/PASMOVE.TEXT. Repeat this process for the PASMISC and PASRANGE sections of OSINTPASLIB, saving them as LIBPL/PASMISC.TEXT and LIBPL/PASRANGE.TEXT.
+- In LIBPL/PASMATH.TEXT (the new file you just created), add the line ".include libpl/pwrii.text" right below the ".DEF    %I_MUL4,%I_DIV4,%I_MOD4" line.
+- Open SOURCE/OSINTPASLIB.TEXT, and copy the PASMOVE section (everything starting at the comment "; File: PASMOVE.TEXT" and ending right above the comment "; File: PASRANGE.TEXT"). Make a new file in the Editor (File->Tear off Stationery, then hit enter) and paste this text into it. Then save the file as LIBPL/PASMOVE.TEXT. Repeat this process for the PASMISC and PASRANGE sections of OSINTPASLIB, saving them as LIBPL/PASMISC.TEXT and LIBPL/PASRANGE.TEXT.
 - In LIBPL/PASMISC.TEXT (the new file you just created), add the line ".include libpl/paslibdefs.text" right below the line ".PROC   %%%MISC" that appears near the top of the file. Also change the line ".ref    gotoxy" to ".ref    %_FGOTOXY". And change the line "jsr     gotoxy" to "jsr     %_FGOTOXY".
 
 # Why did we change all the tool numbers?
@@ -583,4 +594,5 @@ We've talked about a bunch of files throughout this document, so let's conclude 
 # Changelog
 - 7/9/2025 - Initial Release
 - 7/24/2025 - Added ```lisa_serial_transfer.py```, a script for easily transferring the source files over to the Lisa. Also updated the disk image and ```src``` directory with a new ```ALEX/TRANSFER.TEXT``` script, an ```ALEX/ASM/LIBSM.TEXT``` script that was previously missing, and a fixed version of ```ALEX/COMP/LIBOS```.
-- 7/25/2025 - Updated ```lisa_serial_transfer.py``` to use a larger buffer size, the -KEYBOARD instead of -CONSOLE, and a bunch of other tweaks. This has increased performance by a factor of two! Updated the disk imafe and ```ALEX/TRANSFER.TEXT``` accordingly too.
+- 7/25/2025 - Updated ```lisa_serial_transfer.py``` to use a larger buffer size, the -KEYBOARD instead of -CONSOLE, and a bunch of other tweaks. This has increased performance by a factor of two! Updated the disk image and ```ALEX/TRANSFER.TEXT``` accordingly too.
+- 7/26/2026 - Updated ```lisa_serial_transfer.py``` to use my custom ```ALEX-RECEIVE.TEXT``` program to transfer files while preserving the high bit (and thus special characters). Also added ```patch_files.py```, a script that automatically patches all the source files that need modifications. These changes eliminate all the manual work needed to prepare the code for compilation. Updated the disk image accordingly.
