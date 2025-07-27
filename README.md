@@ -354,11 +354,13 @@ Before the transfer starts, it'll ask you to run the EXEC file ```ALEX/TRANSFER.
 
 Now hit return on your modern computer once the Lisa's screen goes blank, and the transfer should start!
 
-As the file(s) are transferred, you'll see the text that's being transferred printed live to the console, as well as a status bar at the top of the screen showing you the progress of the current file, the entire transfer if you're doing multiple files, and ETAs for everything:
+As the file(s) are transferred, you'll see the text that's being transferred printed live to the console on your modern computer, as well as a status bar at the top of the screen showing you the progress of the current file, the entire transfer if you're doing multiple files, and ETAs for everything:
 
 <img width="1613" height="1050" alt="SCR-20250724-nhyr" src="https://github.com/user-attachments/assets/4ea002ac-073b-4b32-b473-dc5b912d260b" />
 
 The program will also create a log file called log.txt where it will print some info about each file as it gets transferred, including any errors that occur (the Lisa not responding properly to a command).
+
+You'll also get occasional progress messages on the Lisa, but they're not super frequent to avoid slowing things down. You'll see a message whenever the Lisa begins receiving a new file, messages every 100 lines that the Lisa processes, and a message at the end of the file letting you know how many lines it was.
 
 Note that the Lisa is pretty slow to process data coming to it over serial, so there's a lot of starting and stopping during the transfer process. We transfer about 8K of data, the Lisa deasserts DSR, and then we have to wait for it to process all the data before we can send more. So don't worry if the output freezes for a minute or two at a time while the "WAITING FOR LISA" message blinks at the top of the screen; that's totally normal and expected! If the freeze is concerningly long, the program will report an error.
 
@@ -595,4 +597,5 @@ We've talked about a bunch of files throughout this document, so let's conclude 
 - 7/9/2025 - Initial Release
 - 7/24/2025 - Added ```lisa_serial_transfer.py```, a script for easily transferring the source files over to the Lisa. Also updated the disk image and ```src``` directory with a new ```ALEX/TRANSFER.TEXT``` script, an ```ALEX/ASM/LIBSM.TEXT``` script that was previously missing, and a fixed version of ```ALEX/COMP/LIBOS```.
 - 7/25/2025 - Updated ```lisa_serial_transfer.py``` to use a larger buffer size, the -KEYBOARD instead of -CONSOLE, and a bunch of other tweaks. This has increased performance by a factor of two! Updated the disk image and ```ALEX/TRANSFER.TEXT``` accordingly too.
-- 7/26/2026 - Updated ```lisa_serial_transfer.py``` to use my custom ```ALEX-RECEIVE.TEXT``` program to transfer files while preserving the high bit (and thus special characters). Also added ```patch_files.py```, a script that automatically patches all the source files that need modifications. These changes eliminate all the manual work needed to prepare the code for compilation. Updated the disk image accordingly.
+- 7/26/2025 - Updated ```lisa_serial_transfer.py``` to use my custom ```ALEX-RECEIVE.TEXT``` program to transfer files while preserving the high bit (and thus special characters). Also added ```patch_files.py```, a script that automatically patches all the source files that need modifications. These changes eliminate all the manual work needed to prepare the code for compilation. Updated the disk image accordingly.
+- 7/27/2025 - Fixed a bug in ```ALEX-RECEIVE.TEXT``` where transfers would occasionally end prematurely during large multi-file operations. Also added status output on the Lisa's display during the transfer. Updated the disk image accordingly.

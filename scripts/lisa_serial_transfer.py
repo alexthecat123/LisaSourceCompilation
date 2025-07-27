@@ -167,8 +167,6 @@ def send_single_file(file_path, filename):
                 print_progress_bar(filename, total_files - len(path_list), total_files, source_file.tell(), os.path.getsize(file_path), size, start_time, False)
                 # And print the byte to the terminal so the user can see what's going on.
                 print(byte.decode('mac-roman') if byte != b'\r' else '\n', end='')
-            lisa.write(b'\r') # Just to be safe, make sure there's a \r at the end of the file; the compiler gets mad if not.
-
 
     except KeyboardInterrupt: # If the user interrupts the transfer, we need to make sure that they have control over the Lisa again.
         print('\n')
@@ -176,14 +174,16 @@ def send_single_file(file_path, filename):
         print('This could take a minute or two (literally) if the Lisa\'s buffer is full...')
         log_file.write('Transfer interrupted by user!')
         log_file.flush()
-        state_start = time.time()
         print_progress_bar(filename, total_files - len(path_list), total_files, 0, 1, size, time.time(), True)
+        time.sleep(2)
+        state_start = time.time()
         while not lisa.dsr: # Wait for the Lisa to be ready for our 'end of transfer' commands, just like above.
             if time.time() - state_start > buffer_timeout:
                 print('WARNING: Lisa is taking forever to empty its buffer, probably hung!')
                 log_file.write('\nWARNING: Lisa is taking forever to empty its buffer, probably hung! ')
                 log_file.flush()
                 break
+        lisa.write(b'\r')
         lisa.write(b'\x03\x03\x03\x0D') # Send the end-of-file sequence to the Lisa.
         message = ''
         state_start = time.time()
@@ -218,7 +218,7 @@ def send_single_file(file_path, filename):
         sys.exit(0)
 
     # This code executes at the end of a file transfer; it's very similar to the code from the Except above.
-    lisa.flush()
+    # lisa.flush()
     state_start = time.time()
     while not lisa.dsr: # Wait for the Lisa to finish processing its data buffer.
         print_progress_bar(filename, total_files - len(path_list), total_files, os.path.getsize(file_path), os.path.getsize(file_path), size, start_time, True)
@@ -227,6 +227,7 @@ def send_single_file(file_path, filename):
             log_file.write('\nWARNING: Lisa is taking forever to empty its buffer, probably hung! ')
             log_file.flush()
             break
+    lisa.write(b'\r') # Just to be safe, make sure there's a \r at the end of the file; the compiler gets mad if not.
     lisa.write(b'\x03\x03\x03\x0D') # And then send the end-of-file sequence to the Lisa.
     message = ''
     state_start = time.time()
