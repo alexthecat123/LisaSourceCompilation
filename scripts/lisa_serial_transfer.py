@@ -3,6 +3,12 @@ import sys
 import time
 import os
 
+# Changelog
+# 7/24/2025 - Initial Release
+# 7/26/2025 - Switched to a different/faster transmission method.
+# 7/27/2025 - Improved reliability by adjusting some handshaking stuff.
+# 7/29/2025 - Fixed a bug where LIBQD/TEXT.TEXT was incorrectly copied over as LIBQD.TEXT.TEXT.
+
 echo_timeout = 5 # How long to wait for an echo from the Lisa before printing a warning.
 empty_echo_threshold = 5 # How many empty echoes we can receive before we ask the user to reboot the Lisa.
 bar_length = 40 # Length of the progress bars on the status line.
@@ -71,7 +77,7 @@ def send_single_file(file_path, filename):
     print(f'Starting to send file {filename}...') # Tell the user what we're doing.
     print('\n')
     print_progress_bar(filename, total_files - len(path_list), total_files, 0, os.path.getsize(file_path), size, time.time(), False) # Initial progress bar.
-    log_file.write(f'{file_path} ({total_files - len(path_list)}/{total_files}): ') # Put the Lisa filename in the log file.
+    log_file.write(f'{filename} ({total_files - len(path_list)}/{total_files}): ') # Put the Lisa filename in the log file.
     log_file.flush()
 
     start_time = time.time() # Get the start time of the transfer.
@@ -262,10 +268,10 @@ if os.path.isdir(file_or_dir): # Check if the user wants to send a directory.
     for root, dir, files in os.walk(file_or_dir): # And walk through the directory and its subdirectories.
         for file_name in files: # For each file in the directory...
             # Check if it's a .UNIX.TXT or .TEXT file. These are the only files we want to send.
-            if(file_name.lower().endswith('.unix.txt') or file_name.lower().endswith('.text')):
+            if(file_name.lower().endswith('.text.unix.txt') or file_name.lower().endswith('.text')):
                 # Convert the filename to the Lisa format, replacing .UNIX.TXT with .TEXT and converting dots and dashes to slashes.
                 new_file_name = file_name.upper().replace('.UNIX.TXT', '').replace('.', '/').replace('-', '/')
-                new_file_name = new_file_name.replace('/TEXT', '.TEXT')
+                new_file_name = new_file_name[:-5] + '.' + new_file_name[-4:]
                 full_path = os.path.abspath(os.path.join(root, file_name)) # Get the full path of the file too.
                 # Check if the file is in a bad path (the path lists we defined at the top). And skip it if so.
                 if any(bad_path in full_path for bad_path in bad_paths) and not any(valid_path in full_path for valid_path in valid_paths):
@@ -280,12 +286,12 @@ else: # If we're here, the user provided a single file to send.
     directory = False # So clear the directory flag.
     size = 1 # Avoid division by zero errors later on.
     # And once again, make sure it's a .UNIX.TXT or .TEXT file.
-    if(file_or_dir.lower().endswith('.unix.txt') or file_or_dir.lower().endswith('.text')):
+    if(file_or_dir.lower().endswith('.text.unix.txt') or file_or_dir.lower().endswith('.text')):
         # Do the same conversion to the Lisa filename as above, and add it to the path and name lists.
         new_file_name = os.path.split(file_or_dir)[-1]
         new_file_name = new_file_name.upper().replace('.UNIX.TXT', '').replace('.', '/').replace('-', '/')
-        new_file_name = new_file_name.replace('/TEXT', '.TEXT')
-        path_list.append(file_or_dir) # Lists will only one item this time!
+        new_file_name = new_file_name[:-5] + '.' + new_file_name[-4:]
+        path_list.append(file_or_dir) # Lists will only have one item this time!
         name_list.append(new_file_name)
     else: # We end up here and exit if the file isn't a .UNIX.TXT or .TEXT file.
         print(f'Error: {file_or_dir} is not a .TEXT or .UNIX.TXT file!')

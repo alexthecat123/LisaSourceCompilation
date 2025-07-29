@@ -1,1 +1,18 @@
-$EXEC$SUBMIT ALEX/MAKE/APPS {All the apps, including the calculator, clock, and prefs}$DOIT$SUBMIT ALEX/MAKE/TKIN {The InstallTool application}$DOIT$SUBMIT ALEX/MAKE/TKALERT {The 1984 version of the alert generator tool}$DOIT$SUBMIT ALEX/MAKE/LIBS {All the system libraries}$DOIT$SUBMIT ALEX/MAKE/FULLOS {The core OS, bootloaders, and drivers}$DOIT$SUBMIT ALEX/MAKE/INSTALLER(1) {The installer, but not the install disks}$DOIT{$SUBMIT ALEX/MAKE/APIM(1) LisaGuide, but don't make the floppy itself}{$DOIT}$ENDEXEC
+$EXEC
+
+$SUBMIT ALEX/MAKE/LIBS {All the system libraries}
+$DOIT
+$SUBMIT ALEX/MAKE/APPS {All the apps, including the calculator, clock, and prefs}
+$DOIT
+$SUBMIT ALEX/MAKE/TKIN {The InstallTool application}
+$DOIT
+$SUBMIT ALEX/MAKE/TKALERT {The 1984 version of the alert generator tool}
+$DOIT
+$SUBMIT ALEX/MAKE/FULLOS {The core OS, bootloaders, and drivers}
+$DOIT
+$SUBMIT ALEX/MAKE/INSTALLER(1) {The installer, but not the install disks}
+$DOIT
+{$SUBMIT ALEX/MAKE/APIM(1) LisaGuide, but don't make the floppy itself}
+{$DOIT}
+
+$ENDEXEC

@@ -8,7 +8,7 @@ In January of 2023, Apple released the source code to the Lisa Office System to 
 # What's in this repo?
 Four things!
 - In the ```src``` directory, you can find all the files that I created as part of the build process. This includes build scripts and new source files that I had to make. The directory structure in ```src``` is identical to the structure in which these files should be organized on the actual Lisa hard disk. These are all included in the disk image I'm about to talk about; I just put them here too for easy viewing in a modern text editor.
-- In the ```scripts``` directory, you'll find two scripts that manipulate the source files on your modern computer. We'll go over what they do later.
+- In the ```scripts``` directory, you'll find some scripts that patch the source files and help you get them onto your Lisa. We'll talk more about them later.
 - ```LOS Compilation Base.image.zip``` is a disk image compatible with ESProFile, Cameo/Aphid, and ArduinoFile that contains everything that I can possibly provide to get you started with compiling LOS without violating Apple's license agreement. Of course, unzip it before you do anything with it! This disk image has stock LOS 3.0 and the Workshop installed, as well as all my build scripts, new source files I had to create, my "incredibly beautiful" application icons, and a couple programs like ICONEDIT that I had to grab from other Lisa disks, as well as plenty of disk space for all the source files you'll have to copy over and the object code that gets generated. You can use the raw-to-dc42 tool that comes with LisaEm to convert this to a DC42 image that you can actually mount and use in LisaEm.
 - ```glue.c``` is a replacement for LisaEm's standard glue.c that will allow your custom copy of LOS to function in LisaEm, even after you've replaced the stock copy of SYSTEM.OS with your own. We'll talk about why this is necessary later.
 
@@ -428,6 +428,17 @@ The Actual Code Changes section describes all the patches that I had to make to 
 - In LIBPL/PASMATH.TEXT (the new file you just created), add the line ".include libpl/pwrii.text" right below the ".DEF    %I_MUL4,%I_DIV4,%I_MOD4" line.
 - Open SOURCE/OSINTPASLIB.TEXT, and copy the PASMOVE section (everything starting at the comment "; File: PASMOVE.TEXT" and ending right above the comment "; File: PASRANGE.TEXT"). Make a new file in the Editor (File->Tear off Stationery, then hit enter) and paste this text into it. Then save the file as LIBPL/PASMOVE.TEXT. Repeat this process for the PASMISC and PASRANGE sections of OSINTPASLIB, saving them as LIBPL/PASMISC.TEXT and LIBPL/PASRANGE.TEXT.
 - In LIBPL/PASMISC.TEXT (the new file you just created), add the line ".include libpl/paslibdefs.text" right below the line ".PROC   %%%MISC" that appears near the top of the file. Also change the line ".ref    gotoxy" to ".ref    %_FGOTOXY". And change the line "jsr     gotoxy" to "jsr     %_FGOTOXY".
+- In APIM/IMEVTLOOP.TEXT, change the uses statement that reads "{$U apim/tfilercomm }tfilercomm" to "{$U FilerComm }  FilerComm".
+- In APIM/IMFOLDERS.TEXT, find the instance of ObjectKind and replace it with ObjectAKind.
+- In APIM/IMINTERP.TEXT, find the 3 instances of ObjectKind and replace them with ObjectAKind. Then find the uses statement that reads "{$U fld.obj      }  FieldEdit" and make a new line below it that reads "{$U FilerComm } FilerComm,".
+- In APIM/IMPATMAT.TEXT, find the uses statement that reads "{$U fld.obj      }  FieldEdit" and make a new line below it that reads "{$U FilerComm } FilerComm,".
+- In APIM/IMSCRIPT.TEXT, find the uses statement that reads "{$U fld.obj      }  FieldEdit" and make a new line below it that reads "{$U FilerComm } FilerComm,".
+- In APIM/IMSIM.TEXT, find the uses statement that reads "{$U fld.obj      }  FieldEdit" and make a new line below it that reads "{$U FilerComm } FilerComm,".
+- In APIM/TCATALOG.TEXT, comment out the lines nilKind = 0, fileKind = 1, everything from folderKind = 3 to computerKind = 10, folderPad = 16, clockKind = 19, and everything from toolKind = 24 to disk2Kind = 27. Then change drawerKind to actualDrawerKind, the 2 occurrances of deskKind to actualDeskKind, the 2 occurrances of profileKind to actualProfileKind, and the occurrance of lastKind with actualLastKind. Right after the "{$U AlertMgr  } AlertMgr" line, make a new line that says "{$U FilerComm } FilerComm,".
+- In APIM/TFDOCCTRL.TEXT, change the uses statement that reads "{$U apim/tfilercomm }tfilercomm" to "{$U FilerComm }  FilerComm". Also change the 2 occurrances of profileKind to actualProfileKind.
+- In APIM/TFILER.TEXT, change the uses statement that reads "{$U Apim/tfilercomm }  Tfilercomm" to "{$U FilerComm }  FilerComm". Then change the 4 occurrances of drawerKind to actualDrawerKind, the 4 occurrances of deskKind to actualDeskKind, the 8 occurrances of profileKind to actualProfileKind, and the 4 occurrances of lastKind to actualLastKind. Comment out the lines "iconWidth    = 48;" and "iconHt       = 32;" too. Now go through and change all 23 instances of ObjectKind to ObjectAKind, all 32 instances of iconData to aIconData, all 34 instances of iconMask to aIconMask, and the 3 instances of iconBoxes to aIconBoxes.
+- In APIM/TFILER2.TEXT, change the occurrance of deskKind to actualDeskKind, the 3 occurrances of profileKind to actualProfileKind, the 7 occurrances of ObjectKind to ObjectAKind, the 1 occurrance of iconData to aIconData, and the 2 occurrances of iconBoxes to aIconBoxes.
+- In APIM/TFILERINT.TEXT, change the occurrance of drawerKind to actualDrawerKind, the 2 occurrances of deskKind to actualDeskKind, the occurrance of profileKind to actualProfileKind, and the 4 occurrances of ObjectKind to ObjectAKind.
 
 # Why did we change all the tool numbers?
 You might've noticed that we went through all the source files for the Lisa apps and changed their tool numbers from the defaults to things in the 100+ range. This was simply done so that you can have copies of the original LOS tools and your newly-built tools installed on your Lisa simultaneously. You could leave the tool numbers untouched if you wanted to, but you'd have to change the build scripts to account for this, and of course this would prevent you from installing the original LOS tools alongside your new ones.
@@ -446,6 +457,8 @@ To build everything, run the ALEX/MAKE/ALL_NOFLOP EXEC script. Remember, to run 
 ```
 <ALEX/MAKE/ALL_NOFLOP
 ```
+
+Make sure to build everything with this command before going back and building certain components on their own; this ensures that all dependencies for every piece of the OS are built and you won't have to worry about anything being missing.
 
 The NOFLOP suffix runs the EXEC script that builds everything but doesn't try to make installer or LisaGuide diskettes at the end. Remember, we can't do those yet because we don't have PACKSEG!
 
@@ -599,3 +612,4 @@ We've talked about a bunch of files throughout this document, so let's conclude 
 - 7/25/2025 - Updated ```lisa_serial_transfer.py``` to use a larger buffer size, the -KEYBOARD instead of -CONSOLE, and a bunch of other tweaks. This has increased performance by a factor of two! Updated the disk image and ```ALEX/TRANSFER.TEXT``` accordingly too.
 - 7/26/2025 - Updated ```lisa_serial_transfer.py``` to use my custom ```ALEX-RECEIVE.TEXT``` program to transfer files while preserving the high bit (and thus special characters). Also added ```patch_files.py```, a script that automatically patches all the source files that need modifications. These changes eliminate all the manual work needed to prepare the code for compilation. Updated the disk image accordingly.
 - 7/27/2025 - Fixed a bug in ```ALEX-RECEIVE.TEXT``` where transfers would occasionally end prematurely during large multi-file operations. Also added status output on the Lisa's display during the transfer. Updated the disk image accordingly.
+- 7/29/2025 - Updated the build scripts (and disk image) to correct a few mistakes that were in the initial set. Also updated ```patch_files.py``` to correct a mistake or two and to patch LisaGuide.

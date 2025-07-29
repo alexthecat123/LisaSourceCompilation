@@ -1,9 +1,24 @@
 import sys
 import os
 
+# Changelog:
+# 7/27/2025 - Initial Release
+# 7/29/2025 - Added patches for LisaGuide (APIM), TKALERT, and the COMP and INSTALL scripts in the BUILD directory.
+
 # A dictionary of all our find and replace patches. The key is the filename, and each patch is stored as a list with 3 elements.
 # These are: the thing to find, the thing to replace it with, and the number of replacements that we expect to perform.
 patches = {
+    'APIM-IMEVTLOOP' : [['{$U apim/tfilercomm }tfilercomm', '{$U FilerComm }  FilerComm', 1]],
+    'APIM-IMFOLDERS' : [['ObjectKind', 'ObjectAKind', 1]],
+    'APIM-IMINTERP' : [['ObjectKind', 'ObjectAKind', 3], ['{$U fld.obj      }  FieldEdit,', '{$U fld.obj     }  FieldEdit,\n     {$U FilerComm } FilerComm,', 1]],
+    'APIM-IMPATMAT' : [['{$U fld.obj      }  FieldEdit,', '{$U fld.obj     }  FieldEdit,\n     {$U FilerComm } FilerComm,', 1]],
+    'APIM-IMSCRIPT' : [['{$U fld.obj      }  FieldEdit,', '{$U fld.obj     }  FieldEdit,\n     {$U FilerComm } FilerComm,', 1]],
+    'APIM-IMSIM' : [['{$U fld.obj      }  FieldEdit,', '{$U fld.obj     }  FieldEdit,\n     {$U FilerComm } FilerComm,', 1]],
+    'APIM-TCATALOG' : [['nilKind     = 0;', '{nilKind    = 0;', 1], ['fileKind    = 1;', 'fileKind   = 1;}', 1], ['folderkind  = 3;', '{folderkind = 3;', 1], ['computerKind= 10;', 'computerKind=10;}', 1], ['folderPad   = 16;', '{folderPad  = 16;}', 1], ['clockKind   = 19;', '{clockKind  = 19;}', 1], ['toolKind    = 24;', '{toolKind   = 24;', 1], ['disk2Kind   = 27;', 'disk2Kind  = 27;}', 1], ['drawerKind', 'actualDrawerKind', 1], ['deskKind', 'actualDeskKind', 2], ['profileKind', 'actualProfileKind', 2], ['lastKind', 'actualLastKind', 1], ['{$U AlertMgr  } AlertMgr,', '{$U AlertMgr   } AlertMgr,\n   {$U FilerComm } FilerComm,', 1]],
+    'APIM-TFDOCCTRL' : [['{$U apim/tfilercomm } tfilercomm', '{$U FilerComm }  FilerComm', 1], ['profileKind', 'actualProfileKind', 2]],
+    'APIM-TFILER' : [['{$U Apim/tfilercomm }  Tfilercomm', '{$U FilerComm }  FilerComm', 1], ['drawerKind', 'actualDrawerKind', 3], ['deskKind', 'actualDeskKind', 3], ['profileKind', 'actualProfileKind', 7], ['lastKind', 'actualLastKind', 4], ['iconWidth    = 48;', '{iconWidth   = 48;}', 1], ['iconHt       = 32;', '{iconHt      = 32;}', 1], ['ObjectKind', 'ObjectAKind', 20], ['objectKind', 'ObjectAKind', 2], ['iconData', 'aIconData', 32], ['iconMask', 'aIconMask', 34], ['iconBoxes', 'aIconBoxes', 3]],
+    'APIM-TFILER2' : [['deskKind', 'actualDeskKind', 1], ['profileKind', 'actualProfileKind', 3], ['ObjectKind', 'ObjectAKind', 6], ['iconData', 'aIconData', 1], ['iconBoxes', 'aIconBoxes', 2]],
+    'APIM-TFILERINT' : [['drawerKind', 'actualDrawerKind', 1], ['deskKind', 'actualDeskKind', 2], ['profileKind', 'actualProfileKind', 1], ['ObjectKind', 'ObjectAKind', 4]],
     'APHP-HP' : [['{t12}', '{t100}', 3]],
     'APCL-CLOCK' : [['{t13}', '{t101}', 1]],
     'APLL-INITFEX' : [['{t5}', '{t103}', 2]],
@@ -20,6 +35,8 @@ patches = {
     'APPW-BTNREAD' : [['{T11}', '{T109}', 1], ['appw/btnfile.text', 'appw/T11buttons.text', 1]],
     'APPW-CONFIG' : [['{T11}', '{T109}', 6]],
     'APPW-PREFMAIN' : [['{t11}', '{t109}', 1], ['{T11}', '{T109}', 1]],
+    'BUILD-COMP' : [['-newdisk-intrinsic.lib', 'intrinsic.lib', 3]],
+    'BUILD-INSTALL' : [['-newdisk-intrinsic.lib', 'intrinsic.lib', 5]],
     'LIBDB-LMSCAN' : [['{$SETC OSBUILT := TRUE }', '{ $SETC OSBUILT := TRUE }\n{ $SETC fSymOk := FALSE }\n{ $SETC fTRACE := FALSE }', 1], ['procedure diffWAdDelete', 'procedure diffWADelete', 1]],
     'LIBFP-NEWFPLIB' : [['{$I libFP/str2dec }', 'procedure Str2Dec; external;', 1]],
     'LIBHW-KEYBOARD' : [['uses {$U hwint.obj} LibHW/hwint;', 'uses {$U libhw/hwint.obj} libhw;', 1]],
@@ -43,7 +60,7 @@ if len(sys.argv) != 2: # Make sure the user specified the path to their Lisa_Sou
 
 source_directory = sys.argv[1]
 total_patches_applied = 0
-total_possible_patches = 6 # The total number of patches for our first "file grafting" round of file mods.
+total_possible_patches = 7 # The total number of patches for our first "file grafting" round of file mods.
 
 if not os.path.isdir(source_directory): # Make sure the user-specified directory is actually a directory before we continue!
     print('ERROR: The source code path that you specified isn\'t a directory!')
@@ -214,6 +231,38 @@ else:
     print(f'WARNING: Failed to find file LIBOS/SYSCALL.TEXT. It will not be modified!')
 
 
+found_file = False
+print('TKALERT.TEXT:')
+for root, dir, files in os.walk(source_directory):
+    for file_name in files:
+        if 'TKALERT' in file_name.upper() and 'LINKMAPS AND MISC. 3.0' in root.upper():
+            full_path = os.path.abspath(os.path.join(root, file_name))
+            if not 'Lisa_Toolkit' in full_path:
+                found_file = True
+                break
+if found_file:
+    with open(full_path, 'r', encoding='iso-8859-1') as tkalert:
+        contents = tkalert.readlines()
+    found_file = False
+    for root, dir, files in os.walk(source_directory):
+        for file_name in files:
+            if 'TKALERT' in file_name.upper() and not 'LINKMAPS AND MISC. 3.0' in root.upper():
+                full_path_2 = os.path.abspath(os.path.join(root, file_name))
+                if not 'Lisa_Toolkit' in full_path_2:
+                    found_file = True
+                    break
+    if not found_file:
+        with open(full_path, 'r', encoding='iso-8859-1') as tkalert:
+            contents = tkalert.readlines()
+        with open(source_directory + '/LISA_OS/TKALERT.TEXT', 'w', encoding='iso-8859-1') as tkalert_new:
+            tkalert_new.writelines(contents)
+        print('    Created file with contents of Linkmaps and Misc. 3.0/TKALERT.TEXT.')
+        total_patches_applied += 1
+
+    else:
+        print(f'    LISA_OS/TKALERT.TEXT already exists, skipping.')
+else:
+    print(f'    WARNING: Failed to find file Linkmaps and Misc. 3.0/TKALERT.TEXT!')
 
 found_file = False
 for root, dir, files in os.walk(source_directory):
@@ -278,7 +327,7 @@ for entry in patches: # Iterate through all the files we need to patch again.
             if entry + '.TEXT' in file_name.upper():
                 full_path = os.path.abspath(os.path.join(root, file_name))
                 # If we find one, and it's not in the Lisa_Toolkit or LISA_OS/LIBHW directories (which contain duplicate files we don't care about), then let's patch it!
-                if (not 'Lisa_Toolkit' in full_path) and (not 'LISA_OS/LIBHW' in full_path):
+                if (not 'Lisa_Toolkit' in full_path) and (not 'LISA_OS/LIBHW' in full_path) and (not 'OS exec files' in full_path):
                     found_file = True
                     break
     if found_file: # If we actually found a file, then start by printing out its Lisa-formatted name.
