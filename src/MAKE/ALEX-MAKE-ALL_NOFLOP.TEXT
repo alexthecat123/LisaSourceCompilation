@@ -1,12 +1,19 @@
 $EXEC
 
-$SUBMIT ALEX/MAKE/LIBS {All the system libraries}
+$SUBMIT ALEX/MAKE/LIBOS {Some libs needed by the apps}
+$SUBMIT ALEX/MAKE/LIBSM
+$SUBMIT ALEX/MAKE/LIBIN
+$SUBMIT ALEX/MAKE/LIBDB
+$SUBMIT BUILD/COMP(LIBPL/PASLIBCALL)
+$SUBMIT BUILD/COMP(LIBPL/PPASLIBC)
 $DOIT
 $SUBMIT ALEX/MAKE/APPS {All the apps, including the calculator, clock, and prefs}
 $DOIT
 $SUBMIT ALEX/MAKE/TKIN {The InstallTool application}
 $DOIT
 $SUBMIT ALEX/MAKE/TKALERT {The 1984 version of the alert generator tool}
+$DOIT
+$SUBMIT ALEX/MAKE/LIBS_PARTIAL {All the system libraries, other than the ones above}
 $DOIT
 $SUBMIT ALEX/MAKE/FULLOS {The core OS, bootloaders, and drivers}
 $DOIT

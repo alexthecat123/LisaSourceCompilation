@@ -23,7 +23,7 @@ patches = {
     'APCL-CLOCK' : [['{t13}', '{t101}', 1]],
     'APLL-INITFEX' : [['{t5}', '{t103}', 2]],
     'APLT-INIT' : [['{T10}', '{T104}', 2]],
-    'APLW-UNITLOTUS' : [['{$U ApLW/UnitSpell.Obj }  UnitSpell,', '{ ApLW/UnitSpell.Obj   UnitSpell, }', 1], ['{$u aplw/sp/spelling.obj }    spelling,', '{ aplw/sp/spelling.obj     spelling, }', 1], ['{$u aplw/sp/verify.obj }      SpVerify,', '{ aplw/sp/verify.obj       SpVerify, }', 1], ['UndoPutDict(fUndoUndo);', '{UndoPutDict(fUndoUndo)}', 1], ['UndoRmvDict(fUndoUndo);', '{UndoRmvDict(fUndoUndo)}', 1], ['DoSpellImid(imid, orecConDwn);', '{DoSpellImid(imid,  orecConDwn);}', 1], ['imidGuess: EndGuessDbox(butnReplace);', '{imidGuess:  EndGuessDbox(butnReplace);}', 1], ['imidGNext: EndGuessDbox(butnRNext);', '{imidGNext:  EndGuessDbox(butnRNext);}', 1], ['NQMore;', '{NQMore}\n            fMoreToQ := FALSE;', 1], ['ParamAlert(ShowReturn (ord (HMReturn))^, \'\', \'\');', '{ParamAlert(ShowReturn (ord(HMReturn))^, \'\', \'\');}', 1], ['SetHzSpell(hzLotus);', '{SetHzSpell(hzLotus)}\ntheDBox.isOpen := FALSE;', 1], ['SpTerminate(closeFile)', 'ok', 1], ['fTstLotus: TF;', 'fTstLotus:  TF;\n   fTstSpell: TF;\n   fTstHeap: TF;\n   fMoreToQ: TF;', 1], ['{T1}', '{T105}', 2]],
+    'APLW-UNITLOTUS' : [['{$U ApLW/UnitSpell.Obj }  UnitSpell,', '{ ApLW/UnitSpell.Obj   UnitSpell, }', 1], ['{$u aplw/sp/spelling.obj }    spelling,', '{ aplw/sp/spelling.obj     spelling, }', 1], ['{$u aplw/sp/verify.obj }      SpVerify,', '{ aplw/sp/verify.obj       SpVerify, }', 1], ['UndoPutDict(fUndoUndo);', '{UndoPutDict(fUndoUndo)}', 1], ['UndoRmvDict(fUndoUndo);', '{UndoRmvDict(fUndoUndo)}', 1], ['DoSpellImid(imid, orecConDwn);', '{DoSpellImid(imid,  orecConDwn);}', 1], ['imidGuess: EndGuessDbox(butnReplace);', '{imidGuess:  EndGuessDbox(butnReplace);}', 1], ['imidGNext: EndGuessDbox(butnRNext);', '{imidGNext:  EndGuessDbox(butnRNext);}', 1], ['NQMore;', '{NQMore}\n            fMoreToQ := FALSE;', 1], ['ParamAlert(ShowReturn (ord (HMReturn))^, \'\', \'\');', '{ParamAlert(ShowReturn (ord(HMReturn))^, \'\', \'\');}', 1], ['SetHzSpell(hzLotus);', '{SetHzSpell(hzLotus)}\ntheDBox.isOpen := FALSE;', 1], ['SpTerminate(closeFile)', 'ok', 1], ['fGenOrec: TF;', 'fGenOrec:  TF;\n    fTstSpell: TF;\n    fTstHeap: TF;\n    fMoreToQ: TF;', 1], ['{T1}', '{T105}', 2]],
     'APLW-TESTBOX' : [['{$U ApLW/UnitSpell.Obj }  UnitSpell,', '{ ApLW/UnitSpell.Obj   UnitSpell, }', 1], ['{$u aplw/sp/spelling.obj }    spelling,', '{ aplw/sp/spelling.obj     spelling, }', 1], ['{$u aplw/sp/verify.obj }      SpVerify,', '{ aplw/sp/verify.obj       SpVerify, }', 1], ['fTstSpell := f;', '{fTstSpell :=  f;}', 1], ['fTstHeap := f;', '{fTstHeap :=  f;}', 1], ['fTrash := FCheckFlag(\'Spell\', fTstSpell);', '{fTrash := FCheckFlag(\'Spell\',  fTstSpell);}', 1], ['fTrash := FCheckFlag(\'Heap\', fTstHeap);', '{fTrash := FCheckFlag(\'Heap\',  fTstHeap);}', 1], ['writeln(\'SpTerminate returned \', ShowReturn (ord (HMReturn))^);', '{writeln(\'SpTerminate returned \', ShowReturn (ord(HMReturn))^);}', 1], ['spStatus := uninitialized;', '{spStatus :=  uninitialized;}', 1], ['SpTerminate(cleanUp)', 'ok', 1], ['LABEL 999;', 'LABEL  999;\n\nTYPE\n    TSpReturn = (ok, notInitialized, illegalString, masterError, unableToLoad, userMemoryFull, wordExists, notFound, limitExceeded);', 1]],
     'APLW-SP-VERIFY' : [['{t1}', '{t105}', 1]],
     'APLW-UNITSCRAP' : [['{t1}', '{t105}', 1], ['{T1}', '{T105}', 2]],
@@ -32,16 +32,19 @@ patches = {
     'APLC-LCFILER' : [['{T2}', '{T108}', 1], ['{T3}', '{T107}', 1]],
     'APLC-MM-LEX' : [['{T2}', '{T108}', 1], ['{T3}', '{T107}', 1]],
     'APLC-APPDIBOX' : [['{T3}', '{T107}', 5], ['inPutGrahics', 'inPutGraphics', 1]],
-    'APPW-BTNREAD' : [['{T11}', '{T109}', 1], ['appw/btnfile.text', 'appw/T11buttons.text', 1]],
+    'APBG-BG1' : [['BG1.0', 'BG1/0', 3]],
+    'APPW-BTNREAD' : [['{T11}buttons', 'APPW/T11buttons', 1]],
     'APPW-CONFIG' : [['{T11}', '{T109}', 6]],
     'APPW-PREFMAIN' : [['{t11}', '{t109}', 1], ['{T11}', '{T109}', 1]],
     'BUILD-COMP' : [['-newdisk-intrinsic.lib', 'intrinsic.lib', 3]],
     'BUILD-INSTALL' : [['-newdisk-intrinsic.lib', 'intrinsic.lib', 5]],
-    'LIBDB-LMSCAN' : [['{$SETC OSBUILT := TRUE }', '{ $SETC OSBUILT := TRUE }\n{ $SETC fSymOk := FALSE }\n{ $SETC fTRACE := FALSE }', 1], ['procedure diffWAdDelete', 'procedure diffWADelete', 1]],
+    'LIBDB-LMSCAN' : [['{$SETC OSBUILT := TRUE }', '{$SETC OSBUILT := TRUE  }\n{$SETC fSymOk := FALSE  }\n{$SETC fTRACE := FALSE  }', 1], ['procedure diffWAdDelete', 'procedure diffWADelete', 1]],
+    'LIBFE-FLD.MAIN' : [['{$I libfe/fld.fmt.text}', '{$I libfe/fld/fmt.text }', 1], ['{$I libfe/fld.disp.text}', '{$I libfe/fld/disp.text }', 1], ['{$I libfe/fld.sel.text}', '{$I libfe/fld/sel.text }', 1], ['{$I libfe/fld.word.text}', '{$I libfe/fld/word.text }', 1], ['{$I libfe/fld.edit.text}', '{$I libfe/fld/edit.text }', 1], ['{$I libfe/fld.cmds.text}', '{$I libfe/fld/cmds.text }', 1], ['{$I libfe/fld.font.text}', '{$I libfe/fld/font.text }', 1]],
     'LIBFP-NEWFPLIB' : [['{$I libFP/str2dec }', 'procedure Str2Dec; external;', 1]],
-    'LIBHW-KEYBOARD' : [['uses {$U hwint.obj} LibHW/hwint;', 'uses {$U libhw/hwint.obj} libhw;', 1]],
+    'LIBHW-KEYBOARD' : [['uses {$U hwint.obj} LibHW/hwint;', 'uses {$U libhw/hwint.obj} hwint;', 1]],
     'LIBOS-PSYSCALL' : [['(*$U object/syscall.obj *)', '(*$U libos/syscall.obj *)', 1]],
     'LIBPL-TFLDERCALL' : [[' paslibequs.text', ' libpl/paslibequs.text', 1]],
+    'LIBQD-QDSAMPLE' : [['$U obj:QuickDraw', '$U LIBQD/QuickDraw', 1], ['$U obj:QDSupport', '$U LIBQD/QDSupport', 1]],
     'LIBQP-UBAUDRATE' : [['{$U -newdisk-QP/Hardware} Hardware;', '{$U LIBQP/QP/Hardware} Hardware;', 1]],
     'LIBTK-UTEXT' : [['{$U UABC}', '{$U libtk/UABC}', 1]],
     'TKIN-SOURCE' : [['{$U Tkin/Globals', '{$U APDM/Globals', 1], ['{$U Tkin/Cat', '{$U APDM/Cat', 1]],
@@ -49,8 +52,8 @@ patches = {
     'SOURCE-PROFILE' : [['if (discsize <= 9728) or (discsize > 30000)', 'if (discsize <= 9728) or (discsize > 500000)', 1]],
     'SOURCE-DRIVERDEFS' : [['(*$SETC DEBUG1:=TRUE*)', '(*$SETC DEBUG1:=FALSE*)', 1], ['(*$SETC TWIGGYBUILD:=TRUE*)', '(*$SETC TWIGGYBUILD:=FALSE*)', 1]],
     'SOURCE-PASCALDEFS' : [['DEBUG1          .EQU    1', 'DEBUG1          .EQU    0', 1], ['TWIGGYBUILD     .EQU    1', 'TWIGGYBUILD     .EQU    0', 1]],
-    'LIBPL-PASMATH' : [['.DEF    %I_MUL4,%I_DIV4,%I_MOD4', '.DEF     %I_MUL4,%I_DIV4,%I_MOD4\n\n        .include libpl/pwrii.text', 1]],
-    'LIBPL-PASMISC' : [['.PROC   %%%MISC', '.PROC    %%%MISC\n\n        .include libpl/paslibdefs.text', 1], ['.ref    gotoxy', '.ref    %_FGOTOXY', 1], ['jsr     gotoxy', 'jsr     %_FGOTOXY', 1]]
+    'LIBPL-PASMATH' : [['        .END', '\n        .include libpl/pwrii.text\n\n       .END', 1]],
+    'LIBPL-PASMISC' : [['.PROC   %%%MISC', '.PROC    %%%MISC\n\n        .include libpl/paslibdefs.text', 1], ['.ref    gotoxy', '.ref    %_FGOTOXY', 1], ['jsr     gotoxy', 'jsr     %_FGOTOXY', 1], ]
 }
 
 if len(sys.argv) != 2: # Make sure the user specified the path to their Lisa_Source directory!
@@ -137,6 +140,7 @@ if libpl:
             new_contents = []
             for index, a in enumerate(range(start_index, stop_index)):
                 new_contents.append(osintpaslib[index + start_index])
+            new_contents.append('       .END')
             with open(full_path + 'LIBPL-PASMOVE.TEXT', 'w', encoding='iso-8859-1') as libpl_pasmove:
                 libpl_pasmove.writelines(new_contents)
             print('LIBPL/PASMOVE.TEXT:\n    Created file from data in SOURCE/OSINTPASLIB.TEXT.')
@@ -163,6 +167,7 @@ if libpl:
             new_contents = []
             for index, a in enumerate(range(start_index, stop_index)):
                 new_contents.append(osintpaslib[index + start_index])
+            new_contents.append('       .END')
             with open(full_path + 'LIBPL-PASMISC.TEXT', 'w', encoding='iso-8859-1') as libpl_pasmisc:
                 libpl_pasmisc.writelines(new_contents)
             print('LIBPL/PASMISC.TEXT:\n    Created file from data in SOURCE/OSINTPASLIB.TEXT.')
@@ -185,6 +190,7 @@ if libpl:
             new_contents = []
             for index, a in enumerate(range(start_index, stop_index)):
                 new_contents.append(osintpaslib[index + start_index])
+            new_contents.append('       .END')
             with open(full_path + 'LIBPL-PASRANGE.TEXT', 'w', encoding='iso-8859-1') as libpl_pasrange:
                 libpl_pasrange.writelines(new_contents)
             print('LIBPL/PASRANGE.TEXT:\n    Created file from data in SOURCE/OSINTPASLIB.TEXT.')
@@ -283,9 +289,9 @@ if found_file:
             break
     if not found_file:
         for index, line in enumerate(contents):
-            if 'fTstLotus = FALSE;' in line:
+            if 'CONST dxScroll = 16;' in line:
                 found_file = True
-                contents[index + 2] = '\nTYPE\n    TSpReturn = (ok, notInitialized, illegalString, masterError, unableToLoad, userMemoryFull, wordExists, notFound, limitExceeded);\n\n'
+                contents[index - 1] = '\nTYPE\n    TSpReturn = (ok, notInitialized, illegalString, masterError, unableToLoad, userMemoryFull, wordExists, notFound, limitExceeded);\n\n'
                 break
         if found_file:
             with open(full_path, 'w', encoding='iso-8859-1') as unitlotus:

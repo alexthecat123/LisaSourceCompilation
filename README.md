@@ -408,15 +408,18 @@ The Actual Code Changes section describes all the patches that I had to make to 
 - In APLC/LCFILER.TEXT, replace the occurrence of "{t2}" with "{t108}" and the occurrence of "{t3}" with "{t107}".
 - In APLC/MM/LEX.TEXT, replace the occurrence of "{t2}" with "{t108}" and the occurrence of "{t3}" with "{t107}".
 - In APLC/APPDIBOX.TEXT, replace the 5 instances of "{t3}" with "{t107}". Then find "inPutGrahics" and replace it with "inPutGraphics".
-- In APPW/BTNREAD.TEXT, replace the instance of "{t11}" with "{t109}". Also replace "appw/btnfile.text" with "appw/T11buttons.text".
+- In APBG/BG1.TEXT, find all 4 occurrances of "BG1.0" and replace them with "BG1/0".
+- In APPW/BTNREAD.TEXT, replace the instance of "{T11}buttons" with "APPW/T11buttons".
 - In APPW/CONFIG.TEXT, replace the 6 instances of "{t11}" with "{t109}".
 - In APPW/PREFMAIN.TEXT, replace the 2 instances of "{t11}" with "{t109}".
 - In LIBDB/LMSCAN.TEXT, add the lines "{$SETC fSymOk := FALSE }" and "{$SETC fTRACE := FALSE }" right below the "{$SETC OSBUILT := TRUE }" line. Also search for "PROCEDURE diffWAdDelete" and replace it with "PROCEDURE diffWADelete".
+- In LIBFE/FLD.MAIN.TEXT, find each of the "{$I libfe/fld.something.text}" statements and change the "." before "something" to a "/".
 - In LIBFP/NEWFPLIB.TEXT, delete the line that says "{$I libFP/str2dec }" and replace it with "procedure Str2Dec; external;".
 - In LIBHW/KEYBOARD.TEXT, replace "uses {$U hwint.obj} LibHW/hwint;" with "uses {$U libhw/hwint.obj} libhw;".
 - In LIBOS/SYSCALL.TEXT, replace the entire contents of the file with the contents of SOURCE/SYSCALL.TEXT.
 - In LIBOS/PSYSCALL.TEXT, change the USES statement from "(*$U object/syscall.obj *)" to "(*$U libos/syscall.obj *)".
 - In LIBPL/TFLDERCALL.TEXT, change the line ".include        paslibequs.text" to ".include        libpl/paslibequs.text".
+- In LIBQD/QDSAMPLE.TEXT, change the USES statement reading "{$U obj:QuickDraw }  QuickDraw" to "{$U LIBQD/QuickDraw }  QuickDraw" and the one reading "{$U obj:QDSupport }  QDSupport" to "{$U LIBQD/QDSupport }  QDSupport.
 - In LIBQP/UBAUDRATE.TEXT, change the USES statement from "{$U -newdisk-QP/Hardware} Hardware;" to "{$U LIBQP/QP/Hardware} Hardware;".
 - In LIBTK/UTEXT.TEXT, change the USES statement reading "{$U UABC}" to "{$U libtk/UABC}".
 - In TKIN/SOURCE.TEXT, change the USES statements reading "{$U Tkin/Globals         }" and "{$U Tkin/Cat         }" to "{$U APDM/Globals         }" and "{$U APDM/Cat         }". 
@@ -612,4 +615,4 @@ We've talked about a bunch of files throughout this document, so let's conclude 
 - 7/25/2025 - Updated ```lisa_serial_transfer.py``` to use a larger buffer size, the -KEYBOARD instead of -CONSOLE, and a bunch of other tweaks. This has increased performance by a factor of two! Updated the disk image and ```ALEX/TRANSFER.TEXT``` accordingly too.
 - 7/26/2025 - Updated ```lisa_serial_transfer.py``` to use my custom ```ALEX-RECEIVE.TEXT``` program to transfer files while preserving the high bit (and thus special characters). Also added ```patch_files.py```, a script that automatically patches all the source files that need modifications. These changes eliminate all the manual work needed to prepare the code for compilation. Updated the disk image accordingly.
 - 7/27/2025 - Fixed a bug in ```ALEX-RECEIVE.TEXT``` where transfers would occasionally end prematurely during large multi-file operations. Also added status output on the Lisa's display during the transfer. Updated the disk image accordingly.
-- 7/29/2025 - Updated the build scripts (and disk image) to correct a few mistakes that were in the initial set. Also updated ```patch_files.py``` to correct a mistake or two and to patch LisaGuide.
+- 8/1/2025 - Updated the build scripts (and disk image) to correct several mistakes that were in the initial set. Also updated ```patch_files.py``` to correct some mistakes and to patch LisaGuide.
