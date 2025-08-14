@@ -188,7 +188,13 @@ Once control is handed over to this process, the load of the graphical shell (th
 ## Packing and PACKSEG
 In order to conserve disk space, the Lisa actually uses a form of compression on some of the binaries on the disk. The compression algorithm is fairly simple and can be found in SOURCE/UNPACK.TEXT; it basically either loads code from the object file itself or from a common "packtable" containing bits of code commonly shared by lots of files and routines depending on the state of a series of flag bytes. But the compiler/linker doesn't generate packed code by default; Apple used a separate program called PACKSEG to pack each source file according to the common system packtable called SYSTEM.UNPACK.
 
-The problem is that we don't have either the PACKSEG binary or the source code to it, so we can't pack any of our binaries. Fortunately, the OS loader is smart enough to auto-detect and load either a packed or an unpacked binary, so we don't strictly need to pack any of the code on the hard disk, but the issue is that many of our files won't fit on the LOS installer diskettes without being packed. So it's impossible to make new installer disks (or a LisaGuide diskette; it's also too big) until we find the original PACKSEG source code, find a binary that's compatible with the Workshop, or write our own.
+The problem is that we don't have either the PACKSEG binary or the source code to it, so we can't pack any of our binaries.
+
+Or at least we didn't until now (August 2025). I've now written a modern implementation of PACKSEG that seems to somehow be slightly more efficient than the original, although I'm not sure how this is even possible given how the packing algorithm works. PACKSEG is necessary in order to fit all the code onto the installer diskettes and the LisaGuide diskette, so now that we have it, we can make new copies of these disks from our freshly-compiled code!
+
+The PACKSEG binary is stored on your disk as ALEX/PACKSEG.OBJ, and the source code is in ALEX/PACKSEG.TEXT, which can also be found in the ```src``` directory of this repo.
+
+One interesting thing to note: you can't use packed intrinsic libraries with the Workshop Linker! So this means that the copies of all the libraries on your disk (IOSPASLIB, SYS1LIB, etc) must be the unpacked versions if you want to link programs with them. The packed versions of the libraries can be used to execute code just fine, but not to link it, so we only use the packed versions to form the LOS installation disks. Whenever you install the Workshop over the top of LOS, it automatically replaces the packed versions with unpacked versions to get the Linker working again.
 
 # The Workshop Development Environment
 All development work for the Lisa is done in an operating environment called the Workshop. This is an almost entirely text-based environment that gets installed alongside the regular Office System, with the only graphical components being the text editor, the serial transfer tool, and the Preferences tool.
@@ -260,7 +266,10 @@ Here's a list of everything that I've provided in the base disk image, just to g
 | Stock Copy of LOS 3.0 and Workshop 3.0 | Completely stock, although it is patched to allow large disk support. Note that the patch was done on the binary level, so it doesn't contain compiled source code. |
 | Icons For Apps                         | My lovely icons for all the LOS applications! |
 | ALEX/TRANSFER.TEXT                     | A script that you'll use in conjunction with a Python program to easily copy the source files into your disk image! |
+| ALEX/PACKSEG.TEXT and ALEX/PACKSEG.OBJ | The source code and binary of my modern-day PACKSEG implementation. Allows you to fit all the LOS code onto a set of LOS installer disks. |
 | My Build Scripts                       | This is the big one; all the build scripts I wrote to actually get the source code to build. |
+| A Bunch of Files in APIM               | We have all the code for LisaGuide, but all of the actual tutorial scripts are missing, so I grabbed them from an original LisaGuide disk and put them in the image. |
+| APIN/FONT.HEUR and APIN/FONT.LIB       | Trimmed-down versions of the Lisa font files that are small enough to to fit onto LOS install disk #1. I had to grab these from an original install disk; we don't seem to have a way to make them. |
 | APLC/CIRCLEBOX                         | A LisaDraw picture file required by LisaCalc that I grabbed off the LisaCalc install diskette. |
 | APLC/FINDBOX                           | Another picture needed by LisaCalc from the install diskette. |
 | APLC/FUNCHINTS                         | Yet another LisaCalc picture. |
@@ -395,8 +404,6 @@ The Actual Code Changes section describes all the patches that I had to make to 
 - In LIBTK/UOBJECT4.TEXT, replace the bad character on the line "Byte2Char := '" with the "bullet point" character (option-8). Do the same for the 4 bad characters in the "write" statement on line 2152 and the 1 bad character on each of the 2 lines following the write statement.
 
 ## Actual Code Changes
-- In APHP/HP.TEXT, find the 3 occurrences of "{t12}" and replace with "{t100}".
-- In APCL/CLOCK.TEXT, find "{t13}" and replace with "{t101}".
 - In APLL/INITFEX.TEXT, find the two occurrences of "{t5}" and replace with "{t103}".
 - In APLT/INIT.TEXT, search for the two instances of "{t10}" and replace with "{t104}".
 - In APLW/UNITLOTUS.TEXT, we need to disable the spellchecker. So first comment out the USES statement lines containing "$U ApLW/UnitSpell.obj", "$U aplw/sp/spelling.obj", and "$U aplw/sp/verify.obj". And then search for and comment out the lines containing "UndoPutDict", "UndoRmvDict", "DoSpellImid", "EndGuessDbox", "NQMore", "ord (HMReturn)", and "SetHzSpell". Right after the "NQMore" line, make a new line with the contents "fMoreToQ := FALSE;". And right after the "SetHzSpell" line, make a new line with the contents "theDBox.isOpen := FALSE;". Now find the line "HMReturn := SpTerminate(closeFile);" and replace it with "HMReturn := ok;". Next, go to the top of the file, and make a new heading called "TYPE" right above the VAR heading. Then, on the next line, type "TSpReturn = (ok, notInitialized, illegalString, masterError, unableToLoad, userMemoryFull, wordExists, notFound, limitExceeded);". Then, under the VAR heading, add the lines "fTstSpell: TF;", "fTstHeap: TF;", and "fMoreToQ: TF;". And completely unrelated to the spellchecker, find the 2 instances of "{t1}" and replace with "{t105}".
@@ -410,8 +417,6 @@ The Actual Code Changes section describes all the patches that I had to make to 
 - In APLC/APPDIBOX.TEXT, replace the 5 instances of "{t3}" with "{t107}". Then find "inPutGrahics" and replace it with "inPutGraphics".
 - In APBG/BG1.TEXT, find all 4 occurrances of "BG1.0" and replace them with "BG1/0".
 - In APPW/BTNREAD.TEXT, replace the instance of "{T11}buttons" with "APPW/T11buttons".
-- In APPW/CONFIG.TEXT, replace the 6 instances of "{t11}" with "{t109}".
-- In APPW/PREFMAIN.TEXT, replace the 2 instances of "{t11}" with "{t109}".
 - In LIBDB/LMSCAN.TEXT, add the lines "{$SETC fSymOk := FALSE }" and "{$SETC fTRACE := FALSE }" right below the "{$SETC OSBUILT := TRUE }" line. Also search for "PROCEDURE diffWAdDelete" and replace it with "PROCEDURE diffWADelete".
 - In LIBFE/FLD.MAIN.TEXT, find each of the "{$I libfe/fld.something.text}" statements and change the "." before "something" to a "/".
 - In LIBFP/NEWFPLIB.TEXT, delete the line that says "{$I libFP/str2dec }" and replace it with "procedure Str2Dec; external;".
@@ -444,7 +449,9 @@ The Actual Code Changes section describes all the patches that I had to make to 
 - In APIM/TFILERINT.TEXT, change the occurrance of drawerKind to actualDrawerKind, the 2 occurrances of deskKind to actualDeskKind, the occurrance of profileKind to actualProfileKind, and the 4 occurrances of ObjectKind to ObjectAKind.
 
 # Why did we change all the tool numbers?
-You might've noticed that we went through all the source files for the Lisa apps and changed their tool numbers from the defaults to things in the 100+ range. This was simply done so that you can have copies of the original LOS tools and your newly-built tools installed on your Lisa simultaneously. You could leave the tool numbers untouched if you wanted to, but you'd have to change the build scripts to account for this, and of course this would prevent you from installing the original LOS tools alongside your new ones.
+You might've noticed that we went through some of the source files for the Lisa apps and changed their tool numbers from the defaults to things in the 100+ range. This was simply done so that you can have copies of the original LOS tools and your newly-built tools installed on your Lisa simultaneously. You could leave the tool numbers untouched if you wanted to, but you'd have to change the build scripts to account for this, and of course this would prevent you from installing the original LOS tools alongside your new ones.
+
+Note that we didn't do this for the Clock, Calculator, and Preferences window since they have to keep their original tool numbers in order to be installed with a fresh installation of LOS. So whenever you build these three, they'll just overwrite the originals.
 
 # Tool Icons
 If you've seen my VCF presentation, you'll know that I've drawn absolutely "lovely" icons for all the newly-built LOS apps. I've included these in the disk image so that they'll show up automatically when you build each tool, but you can make your own if you'd like. Just use the icon editor (ICONEDIT) in the Workshop to draw a new icon and that's all there is to it! If you want to delete my tool icons, they're saved in the root of the disk as {Txxx}icon where xxx is the tool number.
@@ -456,33 +463,35 @@ Before we build things, there's one final thing to do if you're doing all this i
 If you're using LisaEm, the mouse will stop working the moment you compile the core OS itself and replace the original SYSTEM.OS with your new one. This is because LisaEm sets its mouse scaling depending on which OS is loaded, and it detects the OS based on a couple random longwords picked out of the SYSTEM.OS file. Our SYSTEM.OS file isn't quite the same as the original, so the longwords that it grabs are different, and it detects our OS as an unknown OS and thus doesn't set the mouse scaling properly. And we can't hard-code a new entry for our version of the OS because making any changes to the source is likely to change these longwords. So the solution is just to force LisaEm to always use the LOS 3.0 mouse scaling regardless of what OS it detects. To accomplish this, download and compile the LisaEm source code from [here](https://github.com/arcanebyte/lisaem/) but replace the file lisaem-master/src/lisa/motherboard/glue.c with the glue.c provided in this repo.
 
 ## Building Things
-To build everything, run the ALEX/MAKE/ALL_NOFLOP EXEC script. Remember, to run an EXEC script, you hit R for Run and then type the name of the script prefixed with a "<". So here it's:
+To build everything, run either the ALEX/MAKE/ALL or ALEX/MAKE/ALL_NODISKS EXEC script. Remember, to run an EXEC script, you hit R for Run and then type the name of the script prefixed with a "<". So to run the NODISKS one it's:
 ```
-<ALEX/MAKE/ALL_NOFLOP
+<ALEX/MAKE/ALL_NODISKS
 ```
+
+The difference between ALL and ALL_NODISKS is that ALL will build everything and then make a set of LOS installer and LisaGuide diskettes, while ALL_NODISKS will just build everything without making disks, which you can always do later if you want.
+
+Note that making disks requires user intervention (it'll ask you to insert blank floppies), so be checking the Lisa's display for these prompts as you get close to the 9-ish hour mark in the compilation process.
 
 Make sure to build everything with this command before going back and building certain components on their own; this ensures that all dependencies for every piece of the OS are built and you won't have to worry about anything being missing.
-
-The NOFLOP suffix runs the EXEC script that builds everything but doesn't try to make installer or LisaGuide diskettes at the end. Remember, we can't do those yet because we don't have PACKSEG!
 
 If you want to build individual bits of the codebase, that's entirely possible too! Just list the contents of ALEX/MAKE/ to see all the scripts you can run, but here's a quick summary. If it's not listed here, then you probably shouldn't run it:
 | Script Name | Purpose |
 | ----------- | ------- |
-| ALL         | Builds everything and makes a new set of installer and LisaGuide diskettes. Don't use this right now since we don't have PACKSEG! |
-| ALL_NOFLOP  | Builds everything but doesn't make installer or LisaGuide diskettes. Run this one if you want to make everything! | 
+| ALL         | Builds everything and makes a new set of installer and LisaGuide diskettes. This one is fully-working now that we have a modern implementation of PACKSEG! Keep in mind that this requires user intervention at the end when it actually goes to make the disks. |
+| ALL_NODISKS | Builds everything but doesn't make installer or LisaGuide diskettes. | 
 | AP**        | Builds the app specified by ** (like APLP for instance), and performs the appropriate installation procedure for it. |
-| APIM        | Technically one of the AP** scripts, but I want to mention it separately because this is LisaGuide. It'll ask you if you want to make a LisaGuide diskette after building LisaGuide itself; answer no for now since we don't have PACKSEG! |
-| APIMDISK    | Makes a new LisaGuide diskette. Make sure you've built APIM first, and don't run this at all right now since we don't have PACKSEG! |
+| APIM        | Technically one of the AP** scripts, but I want to mention it separately because this is LisaGuide. Run it with an argument of 1 (like <ALEX/MAKE/APIM(1)) to skip making install disks. |
+| APIMDISK    | Makes a new LisaGuide diskette. Make sure you've built APIM first! |
 | APPS        | Builds and installs all the apps, other than APIN (the installer) and APIM (LisaGuide). |
 | BTDRIVERS   | Builds all the SYSTEM.BT_* bootloaders and places them in the proper location on the hard disk. Does NOT overwrite the boot blocks! |
 | BT*****    | Builds the individual SYSTEM.BT_ file specified by ***** and places it in the proper location. Does NOT overwrite the boot blocks! |
 | CDDRIVERS   | Builds and installs all the SYSTEM.CD_* configurable driver files. Make sure to reboot after this! |
 | CD*****     | Builds and installs the individual SYSTEM.CD_* file specified by *****. Make sure to reboot after this! |
-| PREDRIVER   | If you're about to run a CD***** and you've never run PREDRIVER, CDDRIVERS, FULLOS, ALL, or ALL_NOFLOP before, then run this. |
-| DISKS       | Makes new copies of all the LOS install disks from our newly-built files. Make sure you've built everything else first, and don't use this at all right now since we don't have PACKSEG! |
-| DISKn       | Makes a new copy of LOS install disk n from our newly-built files. Make sure you've built everything else first, and don't use this at all right now since we don't have PACKSEG! |
+| PREDRIVER   | If you're about to run a CD***** and you've never run PREDRIVER, CDDRIVERS, FULLOS, ALL, or ALL_NODISKS before, then run this. |
+| DISKS       | Packs all the installation disk files, and makes new copies of all the LOS install disks. Make sure you've built everything else first and be ready to swap disks when it tells you to! |
+| DISKn       | Makes a new copy of LOS install disk n from our newly-built files. Make sure you've built everything else first! |
 | FULLOS      | Builds and installs the entirety of the OS itself, including SYSTEM.OS and the SYSTEM.CD_* and SYSTEM.BT_* files. Does NOT overwrite the boot blocks with the new BT files. Make sure to reboot after this! |
-| INSTALLER   | Builds the LOS installer application and then optionally makes a set of new LOS install disks. Say no to this option for now since we don't have PACKSEG! |
+| INSTALLER   | Builds the LOS installer application and then makes a set of new LOS install disks. If you don't want it to make the install disks, just run it with an argument of 1 (like <ALEX/MAKE/INSTALLER(1)). Be ready to swap disks when it tells you to! |
 | LIB**       | Builds the library specified by **, like LIBAM for instance. If the library you're building is part of SYS1LIB or SYS2LIB, you must re-link that library file and reboot after this in order to actually install it! |
 | LIBS        | Builds and installs all of the system libraries. Make sure to reboot after this! |
 | SYSTEMOS    | Builds and installs a new copy of SYSTEM.OS. Make sure to reboot after this! |
@@ -534,8 +543,10 @@ Alongside all the expected source code, the source release also included several
 
 # Potential Additions/Improvements
 Although I'd love to mess with some of these myself, I think I'll probably leave them to other people for the time being. I've spent enough time with LOS lately, and I need to work on some other things right now!
-- Large Disk Support - Done!
-- New Implementation of PACKSEG - VERY HIGH PRIORITY!!!!
+## Completed
+- New Implementation of PACKSEG
+- Large Disk Support
+## Things Left to Do
 - Y1.995K Patch - Allow dates later than 1995.
 - MacWorks Screen Mod Compatibility - Allow LOS to work with the "square pixels" screen modification.
 - XLerator Support - Start by getting LOS to boot with the 16MHz XLerator installed, then get LOS to actually turn the XLerator on!
@@ -616,3 +627,4 @@ We've talked about a bunch of files throughout this document, so let's conclude 
 - 7/26/2025 - Updated ```lisa_serial_transfer.py``` to use my custom ```ALEX-RECEIVE.TEXT``` program to transfer files while preserving the high bit (and thus special characters). Also added ```patch_files.py```, a script that automatically patches all the source files that need modifications. These changes eliminate all the manual work needed to prepare the code for compilation. Updated the disk image accordingly.
 - 7/27/2025 - Fixed a bug in ```ALEX-RECEIVE.TEXT``` where transfers would occasionally end prematurely during large multi-file operations. Also added status output on the Lisa's display during the transfer. Updated the disk image accordingly.
 - 8/1/2025 - Updated the build scripts (and disk image) to correct several mistakes that were in the initial set. Also updated ```patch_files.py``` to correct some mistakes and to patch LisaGuide.
+- 8/14/2025 - Added my modern implementation of PACKSEG and updated everything to work with it. You can now make a new set of install disks and a LisaGuide disk!

@@ -1,1 +1,32 @@
-$EXEC{Optionally formats LOS install disk 3 and copies the installer files to it}$WRITE "Insert a diskette for LOS Install Disk 3 into the drive and press return..."$READLN %0$WRITE "Do you want to format the disk (Y/N)? [N] "$READLN %1$DOITF{ilemgr}$IF UPPERCASE(%1) = 'Y' THEN    I{nitialize}lower    $IF EXISTS('-lower') THEN {If we want to init and its already an LOS disk}        Y{es, destroy current directory}{Format full size of disk}    $ELSE        {Format fill size of disk}    $ENDIF    Office System 3 3.0 {Disk name}    25 {Max number of files on disk}$ENDIFR{ename}-lower-Office System 3 3.0 {Rename, in case we did not init earlier}D{elete}-lower-= {Kill all files on disk, in case we did not format it}Y{es, delete all}D{elete}-lower-~{=Y{es, delete all hidden files}{Now copy over all our files}C{opy}LIBQP/QPLIB.OBJ-LOWER-QPLIB.OBJC{opy}SULIB.OBJ {DONT THINK WE HAVE WHAT WE NEED TO BUILD THIS, USING OG FOR NOW}-LOWER-SULIB.OBJC{opy}LIBS/SYS2LIB.OBJ-LOWER-SYS2LIB.OBJC{opy}LIBTK/TKLIB.OBJ-LOWER-TKLIB.OBJC{opy}LIBTK/TK2LIB.OBJ-LOWER-TK2LIB.OBJU{nmount}lowerQ{uit}$ENDEXEC
+$EXEC
+{Optionally formats LOS install disk 3 and copies the installer files to it}
+
+$WRITE "Insert a diskette for LOS Install Disk 3 into the drive and press return..."
+$READLN %1
+$DOIT
+F{ilemgr}I{nitialize}lower
+$IF EXISTS('-lower') THEN {If we want to init and its already an LOS disk}
+    Y{es, destroy current directory}{Format full size of disk}
+$ELSE
+    {Format fill size of disk}
+$ENDIF
+Office System 3 3.0 {Disk name}
+25 {Max number of files on disk}
+Q{uit}
+
+{Now copy over all our files}
+{ALL FILES ARE PACKED}
+F{ilemgr}C{opy}APIN/QPLIB_PACKED.OBJ
+-LOWER-QPLIB.OBJ
+C{opy}APIN/SULIB_PACKED.OBJ {DON'T HAVE WHAT WE NEED TO BUILD THIS, USING ORIGINAL}
+-LOWER-SULIB.OBJ
+C{opy}APIN/SYS2LIB_PACKED.OBJ
+-LOWER-SYS2LIB.OBJ
+C{opy}APIN/TKLIB_PACKED.OBJ
+-LOWER-TKLIB.OBJ
+C{opy}APIN/TK2LIB_PACKED.OBJ
+-LOWER-TK2LIB.OBJ
+U{nmount}lower
+Q{uit}
+
+$ENDEXEC

@@ -1,0 +1,994 @@
+{JUST DO 1 CALL TO GETNEXTHEADER AT THE BOTTOM OF THE WHILE TRUE LOOP}
+{TEST CALCING THE BLOCKSIZES AHEAD OF TIME TO SPED UP OUR LOOPS}
+
+
+{PACKSEG - The Modern 2025 Version}
+{By: Alex Anderson-McLeod}
+
+{$SETC DEBUG = FALSE}
+
+PROGRAM PACKSEG;
+
+USES
+    {$U libos/syscall.obj} Syscall, {For all our file/dataseg operations}
+    {$U libpl/paslibcall.obj} Paslibcall, {For clearing the screen}
+    {$U libhw/hwint.obj} Hwint; {For timing the packing operation}
+
+LABEL 1, 2, 3, 999;
+
+CONST {The headers for different blocks within an object code file}
+    eofMarker = 0; {$00}
+    moduleNameHeader = -128; {$80}
+    endBlockHeader = -127; {$81}
+    entryPointHeader = -126; {$82}
+    startAddressHeader = -124; {$84}
+    unpackedCodeHeader = -123; {$85}
+    oldExecHeader = -113; {$8F}
+    unitBlockHeader = -110; {$92}
+    libNamesHeader = -109; {$93 - This isn't documented anywhere!}
+    physExecHeader = -105; {$97}
+    executableHeader = -104; {$98}
+    versionCtrlHeader = -103; {$99}
+    segTableHeader = -102; {$9A}
+    unitTableHeader = -101; {$9B}
+    segLocationHeader = -100; {$9C}
+    packedCodeHeader = -96; {$A0}
+    packTableHeader = -95; {$A1}
+    osDataHeader = -78; {$B2}
+
+TYPE
+    {1, 2, and 4-byte ints}
+    int1 = -128..127;
+    int2 = integer;
+    int4 = longint;
+
+    {Record to hold the packtable itself}
+    PackTabRecord = record
+                        header: int1;
+                        reserved: int1;
+                        tableSize: int2;
+                        version: int4;
+                        table: array[0..1023] of int2;
+                    end;
+
+    {Record for the standard header that all object file blocks have}
+    {They start with a header byte}
+    {Followed by a "reserved" byte (always 0)}
+    {And then a word representing the size of the entire block in bytes}
+    StdHeadRecord = record
+                                header: int1;
+                                reserved: int1;
+                                blockSize: int2;
+                            end;
+
+    {Record to hold endblocks, which come after a packed or unpacked code block}
+    EndBlkRecord = record
+                            header: int1;
+                            reserved: int1;
+                            blockSize: int2;
+                            codeSize: int4;
+                        end;
+
+    {Record to hold module name blocks, which come right before code blocks}
+    ModNameRecord = record
+                            header: int1;
+                            reserved: int1;
+                            blockSize: int2;
+                            name: array[1..8] of int1;
+                            segName: array[1..8] of int1;
+                            codeSize: int4; {THIS SEEMS TO ALWAYS BE 0, REGARDLESS OF WHETHER FOLLOWING SEG IS PACKED OR NOT}
+                        end;
+
+    {Record to hold packed code; code can be larger than 1K as explained later}
+    {Packed code stored as bytes since we need to mess with things on the byte level}
+    PacCodeRecord = record
+                            header: int1;
+                            reserved: int1;
+                            blockSize: int2;
+                            address: int4;
+                            codeSize: int4;
+                            code: array[1..1024] of int1;
+                        end;
+
+    {Record to hold unpacked code; once again, code can be larger than 1K}
+    {Unpacked code stored as words since we never need to read single bytes}
+    UnpCodeRecord = record
+                            header: int1;
+                            reserved: int1;
+                            blockSize: int2;
+                            address: int4;
+                            code: array[1..512] of int2;
+                        end;
+
+    {Record to hold a single jump table entry, part of an exec block}
+    JTRecord = record
+                segAddr: int4;
+                packedSize: int2;
+                unpackedSize: int2;
+                memLoc: int4;
+               end;
+
+    {Record to hold an exec block; tells the OS that this object file is executable}
+    {Includes an array of 50 jump table records to support files with up to 50 segments}
+    {uselessTable is just there as padding since there can be extra comment text at the end}
+    ExecRecord = record
+                    header: int1;
+                    reserved: int1;
+                    blockSize: int2;
+                    JTAddr: int4;
+                    JTSize: int4;
+                    dataSize: int4;
+                    mainSize: int4;
+                    JTSegDelta: int4;
+                    StkSegDelta: int4;
+                    dynStack: int4;
+                    maxStack: int4;
+                    minHeap: int4;
+                    maxHeap: int4;
+                    numSegs: int2;
+                    JT: array[1..50] of JTRecord;
+                    uselessTable: array[1..4096] of int1;
+                 end;
+
+    {Record to hold info about a segment; forms part of a seg location block}
+    {sizePacked is 0 if it's an unpacked segment, and the segment size if it's packed}
+    {sizeUnpacked is the unpacked size, regardless of whether the seg is packed or not}
+    SegRecord = record
+                    segName: array[1..8] of int1;
+                    segNum: int2;
+                    useDescPtr: int4;
+                    useCount: int2;
+                    sysNumber: int2;
+                    fileNumber: int2;
+                    fileLocation: int4;
+                    sizePacked: int2;
+                    sizeUnpacked: int2;
+                end;
+
+    {Record to hold a seg location block; includes an array of 50 seg info records}
+    SegLocRecord = record
+                            header: int1;
+                            reserved: int1;
+                            blockSize: int2;
+                            numSegs: int2;
+                            segInfo: array[1..50] of SegRecord;
+                        end;
+
+    {Pointers to where packed and unpacked code will be stored}
+    UnpRecPtr = ^UnpCodeRecord;
+    PacRecPtr = ^PacCodeRecord;
+
+VAR
+    {Error code returned by syscalls}
+    ecode: integer;
+
+    {Paths to input file, packtable, output file, and our data segment}
+    inPath: pathname;
+    outPath: pathname;
+    packPath: pathname;
+    dataSegPath: pathname;
+
+    {Create instances of all the records we just defined}
+    packTab: PackTabRecord;
+    stdHeader: StdHeadRecord;
+    endBlk: EndBlkRecord;
+    modName: ModNameRecord;
+    execBlock: ExecRecord;
+    segLoc: SegLocRecord;
+
+    {These will hold refnums that we can pass to the OS to refer to our open files}
+    systemUnpack: integer;
+    inOBJ: integer;
+    outOBJ: integer;
+    dataSegRef: integer;
+
+    {Pointers to our dataseg and the packed and unpacked code it'll contain}
+    dsPtr: longint;
+    unpSegPtr: UnpRecPtr;
+    packSegPtr: PacRecPtr;
+
+    {Number of bytes written after a write syscall; returned by the OS}
+    count: longint;
+
+    {Counters for loops}
+    i: integer;
+    j: integer;
+
+    {Our current location in the input and output files}
+    fileLoc: longint;
+    writeLoc: longint;
+
+    {Location of the exec block and segment location block in our output file}
+    {We have to go back and modify these blocks at the end, so we need to remember where they are}
+    execLoc: longint;
+    segLocLoc: longint;
+
+    {A block of all 0's that we can write to the end of a file for padding}
+    dummyBlock: array[1..512] of int1;
+
+    {Helps us check if the user put a dot in one of their specified filenames}
+    dotFlag: boolean;
+
+    {Used to time the entire packing operation}
+    startTime: longint;
+
+{$IFC DEBUG}
+{Prints a byte in hex for easier debugging, only compiled if debugging enabled}
+{Modified from procedure PrHex in SOURCE/FSDIRDEBUG.TEXT}
+procedure hex1(n: int1);
+  var
+       HexRep : string[2];
+       digit  : integer;
+       i      : integer;
+  begin
+      HexRep := '01';  { set string length }
+      if n < 0 then
+        HexRep := '??'
+      else
+        for i := 2 downto 1 do
+        begin
+          digit := n mod 16;
+          if digit > 9 then
+            HexRep[i] := chr(ord('A') + (digit - 10))
+          else
+            HexRep[i] := chr(ord('0') + digit);
+          n := n div 16;
+        end;
+      write(HexRep);
+  end;
+
+{Prints a word in hex for debugging}
+{Modified from that same PrHex procedure}
+procedure hex2(n: int1);
+  var
+       HexRep : string[4];
+       digit  : integer;
+       i      : integer;
+  begin
+      HexRep := '0123';  { set string length }
+      if n < 0 then
+        HexRep := '????'
+      else
+        for i := 4 downto 1 do
+        begin
+          digit := n mod 16;
+          if digit > 9 then
+            HexRep[i] := chr(ord('A') + (digit - 10))
+          else
+            HexRep[i] := chr(ord('0') + digit);
+          n := n div 16;
+        end;
+      write(HexRep);
+  end;
+{$ENDC}
+
+{Takes an unpacked code segment and packs it}
+{Arguments are the address of the unpacked code and the address at which to put the packed code}
+PROCEDURE PackCode(inAddr: longint; outAddr: longint);
+    LABEL 111, 222;
+    VAR
+        {Loop counters}
+        i: integer;
+        j: integer;
+        k: integer;
+        {Pointers to the input (unpacked) and output (packed) code buffers}
+        inCode: UnpRecPtr;
+        outCode: PacRecPtr;
+        {Flag to tell if we found a word in the packtable}
+        foundWord: boolean;
+        {Holds the current word we just read from the input file}
+        currWord: int2;
+        {The flag byte that tells the unpacker how to interpret the last several bytes}
+        flagByte: int1;
+        {Indices into the input (unpacked) and output (packed) code buffers}
+        inIndex: integer;
+        outIndex: longint;
+        {Pointer to a byte; used to manipulate bytes inside of words}
+        bytePtr: ^int1;
+        {Lookup table for powers of 2}
+        pwr2: array[0..7] of -128..127;
+        {Used to calculate our completion percentage}
+        percent: integer;
+        lastPercent: integer;
+    BEGIN
+        {Make pointers from the addresses in the procedure arguments}
+        inCode := pointer(inAddr);
+        outCode := pointer(outAddr);
+
+        {Set up the output record to match that of a packed code block}
+        outCode^.header := packedCodeHeader;
+        outCode^.reserved := 0;
+        outCode^.address := inCode^.address;
+        {The code size of a packed code block is set to the unpacked size, not the packed size}
+        {But we subtract 8 to remove the 8-byte header of the unpacked code block}
+        outCode^.codeSize := inCode^.blockSize - 8;
+
+        {Set up the lookup array for powers of 2}
+        {Since Pascal requires the use of signed numbers, we use -128 instead of 128}
+        {This will still set the high bit like we'll want}
+        pwr2[0] := 1;
+        pwr2[1] := 2;
+        pwr2[2] := 4;
+        pwr2[3] := 8;
+        pwr2[4] := 16;
+        pwr2[5] := 32;
+        pwr2[6] := 64;
+        pwr2[7] := -128;
+
+        {Initialize our input and output positions to the start of each buffer}
+        inIndex := 1;
+        outIndex := 1;
+        lastPercent := 0;
+        {And put our first percentage marker on the screen}
+        write('0%...');
+        {Loop until we reach the end of the unpacked code, at which point we break}
+        while true do
+            begin
+                {Calculate the completion percentage using the input index}
+                percent := round(((inIndex*2) / (inCode^.blockSize - 8))*100);
+                {Display it if it's divisible by 10, more than what is was before, and not 100%}
+                if (percent mod 10 = 0) and (percent > lastPercent) and (percent <> 100) then write(percent:2, '%...');
+                lastPercent := percent;
+                {$IFC DEBUG}
+                writeln('inIndex is now ', inIndex, '.');
+                writeln('outIndex is now', outIndex, '.');
+                {$ENDC}
+                {Clear out the flag byte}
+                flagByte := 0;
+                {Iterate through each bit in the flag byte, from LSB to MSB}
+                for i := 0 to 7 do
+                    begin
+                        {And read the next code word from the unpacked input code}
+                        {Range checking must be off b/c we made the code array 1K, but our dataseg allows up to 32K}
+                        {Which is the max segment size}
+                        {$R-}
+                        currWord := inCode^.code[inIndex];
+                        {$R+}
+                        {Assume that we haven't found our word in the packtale}
+                        foundWord := false;
+                        {And then iterate through each entry in said packtable}
+                        for j := 1 to (((packTab.tableSize - 8) div 2) - 1) do
+                            begin
+                                {Check to see if that packtable word is our current input word}
+                                if packTab.table[j] = currWord then
+                                    begin
+                                        {Set the flag and break if so}
+                                        foundWord := true;
+                                        goto 111;
+                                    end;
+                            end;
+                    111:
+                        {If we ended up finding the word in the packtable, then we can do some compression!}
+                        if foundWord = true then
+                            begin
+                                {$IFC DEBUG}
+                                write('Word ');
+                                hex2(currWord);
+                                write(' is in packtable at index ');
+                                hex2(j);
+                                writeln('! Setting bit ', i, ' of flag byte.');
+                                {$ENDC}
+                                {Set the next byte in the output buffer to the index into the packtable where we found the word}
+                                {The j > 127 stuff is needed to convert the index to a negative number if necessary}
+                                {Because of the Lisa's dumb signed integer requirement}
+                                {And once again, range checking must be off for out output buffer}
+                                {$R-}
+                                if j > 127 then outCode^.code[outIndex] := j - 256
+                                else outCode^.code[outIndex] := j;
+                                {$R+}
+                                {To signify that this byte is an index into the packtable, set our current bit in the flag byte}
+                                {We have to use the pwr2 LUT b/c Lisa Pascal has no bitwise operators}
+                                flagByte := flagByte + pwr2[i];
+                                {Increment the output buffer index to move onto the next byte}
+                                outIndex := outIndex + 1;
+                            end
+                        {If we didn't find the input word in the packtable, then things are a little different}
+                        {In this case, just copy the input word straight to the output buffer as-is}
+                        else
+                            begin
+                                {$IFC DEBUG}
+                                write('Word ');
+                                hex2(currWord);
+                                writeln(' is not in packtable! Not setting bit       ', i, ' of flag byte.');
+                                {$ENDC}
+                                {So we can access the 2 bytes of the word individually, make a byte pointer to it}
+                                bytePtr := @currWord;
+                                {And write the first byte of the word out to our output buf (with rangecheck off)}
+                                {$R-}
+                                outCode^.code[outIndex] := bytePtr^;
+                                {$R+}
+                                {Then do the same thing with the second byte of the word}
+                                bytePtr := pointer(ord(@currWord) + 1);
+                                {$R-}
+                                outCode^.code[outIndex + 1] := bytePtr^;
+                                {$IFC DEBUG}
+                                write('High byte of output is ');
+                                hex1(outCode^.code[outIndex]);
+                                write(' and low byte is ');
+                                hex1(outCode^.code[outIndex+1]);
+                                writeln;
+                                {$ENDC}
+                                {$R+}
+                                {Since we copied 2 bytes to the output, increment the outIndex by 2 not 1}
+                                outIndex := outIndex + 2;
+                                {To signify that this word is just copied straight from the unpacked input, don't set the flag bit}
+                            end;
+                        {Check if we're at the end of the input unpacked code and break if so}
+                        {$R-}
+                        if inIndex = ((inCode^.blockSize - 8) div 2) then goto 222; {Off by 1 error?}
+                        {$R+}
+                        {Otherwise increment the input index to the next word and loop again for the next flag bit}
+                        inIndex := inIndex + 1;
+                    end;
+                {$IFC DEBUG}
+                write('Writing flag byte of ');
+                hex1(flagByte);
+                writeln(' to file.')
+                {$ENDC}
+                {At this point we've filled up all 8 bits of the flag byte, so write it out to the packed output}
+                {$R-}
+                outCode^.code[outIndex] := flagByte;
+                {$R+}
+                {And increment the outIndex accordingly}
+                outIndex := outIndex + 1;
+                {Now we loop back to the top of the while true loop and start again with the next flag byte}
+            end;
+
+        222:
+            {We end up here when we're done packing all the code, so put "100%" on the screen}
+            writeln('100%');
+            {$IFC DEBUG}
+            write('All done! Writing final flag byte of ');
+            hex1(flagByte);
+            writeln(' to file.')
+            {$ENDC}
+            {And don't forget to write out the last flag byte}
+            {$R-}
+            outCode^.code[outIndex] := flagByte;
+            {$R+}
+            {Complete with an increment of the index afterward}
+            outIndex := outIndex + 1;
+            {But we're not done yet; unless the code size was divisible by 8, we didn't fill the last flag byte fully}
+            {So we need to save some info telling the unpacker how many bits we actually filled}
+            {And we also need to pad the output with an extra byte if it's not word-aligned at the end}
+            {So check to see if we're not word aligned}
+            if outIndex mod 2 = 1 then
+                begin
+                    {$IFC DEBUG}
+                    write('We ended on bit ', i, ', so final byte is i*2= ');
+                    hex1(i*2);
+                    writeln;
+                    {$ENDC}
+                    {And if we're not word-aligned, then write out a "slack byte" of 0 to fill some space}
+                    {$R-}
+                    outCode^.code[outIndex] := 0;
+                    {$R+}
+                    outIndex := outIndex + 1;
+                    {Followed by a byte that holds how many bits of the last flag byte we used, shifted left by 1}
+                    {$R-}
+                    outCode^.code[outIndex] := i*2;
+                    {$R+}
+                end
+            {We end up here if we don't need to do any padding to get word-aligned}
+            else
+                begin
+                    {$IFC DEBUG}
+                    write('We ended on bit ', i, ', so final byte is i*2+1= ');
+                    hex1(((i*2)+1));
+                    writeln;
+                    writeln('No slack byte.');
+                    {$ENDC}
+                    {So just write out the final byte, no slack byte needed}
+                    {Note that we add 1 to it this time, to tell the unpacker that there's no slack byte}
+                    {$R-}
+                    outCode^.code[outIndex] := ((i*2) + 1)
+                    {$R+}
+                end;
+            {$IFC DEBUG}
+            writeln('Final packed code size is ', outIndex, ' and packed block size is ', outIndex + 12, '.');
+            {$ENDC}
+            {And last but not least, set the block size of the packed code to the packed code size + the size of the header}
+            {$R-}
+            outCode^.blockSize := outIndex + 12;
+            {$R+}
+    END;
+
+{Given a file reference, a header record, and a location in the input file, finds the next header block in the file}
+{Puts the header in the header record, and changes the file location to point to this new block}
+PROCEDURE GetNextHeader(fileName: integer; var stdHeader: StdHeadRecord; var fileLoc: longint);
+    VAR
+        {An error code and a write count, both returned by syscalls}
+        ecode: integer;
+        count: longint;
+    BEGIN
+        {Increment our location in the file by however big the previous block was}
+        fileLoc := fileLoc + stdHeader.blockSize;
+        {And then read a 4-byte header into the stdHeader record starting at this new location}
+        read_data(ecode, fileName, ord4(@stdHeader), 4, count, Absolute, fileLoc);
+        {Make sure we read the header properly; print an error and exit if not}
+        if (ecode > 0) or (count <> 4) then
+        begin
+            writeln('ERROR: Failed to read file header with ecode ', ecode, ' and count ', count, '!');
+            goto 999;
+        end;
+    END;
+
+{The main program}
+BEGIN
+    {Initialize our locations in the input and output files}
+    fileLoc := 0;
+    writeLoc := 0;
+    {As well as the dot flag for our filenames}
+    dotFlag := false;
+    {Set execLoc and segLocLoc to -1; this lets us check if they ever appeared in our file at all; they may not}
+    execLoc := -1;
+    segLocLoc := -1;
+    {Clear out the paths to the input/output files and the packtable file}
+    inPath := '';
+    outPath := '';
+    packPath := '';
+    {And give a dummy path for the dataseg; it doesn't get saved to disk so who cares}
+    dataSegPath := 'PACKSEG_DATASEG';
+
+    {Use a procedure from paslibcall to clear the screen}
+    ScreenCtr(CclearScreen);
+
+    {And put up a welcome screen}
+    writeln('Welcome to PACKSEG - The 2025 Edition! v1.0 By: Alex Anderson-McLeod');
+1:
+    {Now we need to get some filenames from the user}
+    {I tried to adhere to the same input method used by the compiler/linker}
+    {Ask for an input filename and read it into inPath}
+    write('Input file [.OBJ] ? ');
+    readln(inPath);
+    {This is a good time to record the start time of our program's execution}
+    {The Timer function from libhw/hwint returns the time in ms}
+    startTime := Timer;
+    {If the user just hit enter, then exit the program}
+    if length(inPath) = 0 then goto 999;
+    {Otherwise, iterate through each char in the path}
+    for i := 1 to length(inPath) do
+        begin
+            {And check if it's a dot}
+            if inPath[i] = '.' then dotFlag := true;
+        end;
+    {If there were no dots (so no extensions) in the filename}
+    {Then assume that the user meant a .OBJ file and append that extension to their filename}
+    if dotFlag = false then inPath := concat(inPath, '.OBJ');
+    {If there was a dot, then the user aleady put an extension, so leave the filename alone}
+    {Now open the input file as inOBJ}
+    open(ecode, inPath, inOBJ, [DRead]);
+    {If we fail to open it, print an error and ask for another input filename}
+    if ecode > 0 then
+        begin
+            writeln('Can''t open ', inPath, ' for input.');
+            goto 1;
+        end;
+2:
+    {If the infile was valid, ask for a packtable path}
+    write('Packtable [SYSTEM.UNPACK] ? ');
+    readln(packPath);
+    {If they just hit enter, then assume they want SYSTEM.UNPACK}
+    if length(packPath) = 0 then packPath := 'SYSTEM.UNPACK';
+    {Now open the packtable as systemUnpack}
+    open(ecode, packPath, systemUnpack, [DRead]);
+    {And give an error if we fail, prompting them for another table}
+    if ecode > 0 then
+        begin
+            writeln('Can''t open ', packPath, ' as packtable.');
+            goto 2;
+        end;
+3:
+    {Now we just need an output file path}
+    write('Output file [', inPath, '] ? ');
+    readln(outPath);
+    dotFlag := false;
+    {If the user just hit enter, then default the outPath to be the inPath}
+    if length(outPath) = 0 then outPath := inPath
+    else
+        begin
+            {Otherwise, do the same dot check from earlier}
+            for i := 1 to length(outPath) do
+                begin
+                    if outPath[i] = '.' then dotFlag := true;
+                end;
+            {And append .OBJ if there's no dot in the filename}
+            if dotFlag = false then outPath := concat(outPath, '.OBJ');
+        end;
+    {We'll wait and open the outfile later, so that we don't overwrite it until we think our inputs are good}
+
+    {Fill our dummy file block with all zeros}
+    for i := 1 to 512 do dummyBlock[i] := 0;
+    
+    {Now read some stuff from the packtable to make sure it's valid}
+    {First read the standard header}
+    read_data(ecode, systemUnpack, ord4(@stdHeader), 4, count, Absolute, 0);
+    if (ecode > 0) or (count <> 4) then
+        begin
+            writeln('ERROR: Failed to read packtable header!');
+            goto 999;
+        end;
+    {And make sure it's a packtable header, quitting if not}
+    if stdHeader.header <> packTableHeader then
+        begin
+            writeln('ERROR: File ', packPath, ' is NOT a packtable.');
+            goto 999;
+        end;
+
+    {If it's a packtable, then go ahead and read the whole thing into our packtable record}
+    read_data(ecode, systemUnpack, ord4(@packTab), stdHeader.blockSize, count, Absolute, 0);
+    if (ecode > 0) or (count <> stdHeader.blockSize) then
+        begin
+            writeln('ERROR: Failed to read full packtable!');
+            goto 999;
+        end;
+    
+    {$IFC DEBUG}
+    writeln('Packtable is of size ', packTab.tableSize, '. Contents are:');
+    for i := 0 to (((packTab.tableSize - 8) div 2) - 1) do
+        begin
+            hex2(packTab.table[i]);
+            write(' ');
+        end;
+    {$ENDC}
+
+    {Now create a data segment in RAM that we can use to store the packed and unpacked code buffers}
+    {We really just need 65556 bytes but do 66000 to be safe}
+    {dsPtr is a pointer to the newly-created seg}
+    make_dataseg(ecode, dataSegPath, 66000, 0, dataSegRef, dsPtr, 1, ds_private);
+    {Print an error and exit if we fail}
+    if ecode > 0 then
+        begin
+            writeln('ERROR: Failed to make dataseg ecode ', ecode);
+            goto 999;
+        end;
+    {Now position our unpacked segment record at the start of the dataseg}
+    unpSegPtr := pointer(ord(dsPtr));
+    {And our packed segment record right after the unpacked record}
+    packSegPtr := pointer(ord(unpSegPtr) + 32776);
+
+    {Grab the very first header from our input file}
+    stdHeader.blockSize := 0;
+    GetNextHeader(inOBJ, stdHeader, fileLoc);
+
+    {Now we've done just about all the input validation we can, so open the outfile}
+    {First delete any existing files of the same name}
+    kill_object(ecode, outPath);
+    {Create a new file}
+    make_file(ecode, outPath, 0);
+    {Giving an error if we can't}
+    if ecode > 0 then
+        begin
+            writeln('Can''t create output file ', outPath, '.');
+            goto 3;
+        end;
+    {And then open it}
+    open(ecode, outPath, outOBJ, [DWrite]);
+    {Giving another error and asking for another filename if we can't}
+    if ecode > 0 then
+        begin
+            writeln('Can''t open ', outPath, ' for output.');
+            goto 3;
+        end;
+
+    {And go into an infinite loop, which we'll break out of when we run into an EOF header}
+    while true do
+        begin
+            {Check the header that we just read against all the different things it could be, and act accordinly}
+            case stdHeader.header of
+                {If it's an EOF marker, then we need to clean up and exit}
+                eofMarker:
+                    begin
+                        {If there ended up being an exec block, then we need to write it back to its location (execLoc) in the outfile}
+                        {This is because we changed it each time we discovered and packed a new block of code}
+                        if execLoc >= 0 then write_data(ecode, outOBJ, ord4(@execBlock), execBlock.blockSize, count, Absolute, execLoc);
+                        {If we found a segment location block, then we need to rewrite it for the exact same reason}
+                        if segLocLoc >= 0 then write_data(ecode, outOBJ, ord4(@segLoc), segLoc.blockSize, count, Absolute, segLocLoc);
+                        {Once we've done that, write the actual EOF marker out to the outfile at writeLoc, our current index into the file}
+                        write_data(ecode, outOBJ, ord4(@stdHeader), 4, count, Absolute, writeLoc);
+                        {And increment writeLoc by count, the actual number of bytes that were written to the file}
+                        writeLoc := writeLoc + count;
+                        {Now we've got to do something a bit strange that it took me forever to figure out}
+                        {If, after writing everything out to the output file, its last block has less than 5 bytes free, then we've got a problem}
+                        {For some reason, the Lisa will refuse to unpack and execute a file ("Code swap-in error") if this is the case}
+                        {So check if less than 5 bytes are free in the last block}
+                        if (writeLoc mod 512) >= 507 then
+                            begin
+                                {$IFC DEBUG}
+                                writeln('Less than 5 bytes left at end of file, so adding an extra block!');
+                                {$ENDC}
+                                {And if so, write out an entire extra block of zeros for padding}
+                                {No idea why we have to do this, but it works}
+                                write_data(ecode, outOBJ, ord4(@dummyBlock), 512, count, Absolute, writeLoc);
+                            end
+                        else
+                            begin
+                                {$IFC DEBUG}
+                                writeln('Filling extra ', (512 - (writeLoc mod 512)), ' bytes in the last file block with zeros.');
+                                {$ENDC}
+                                {Otherwise, just fill the rest of the final block with zeros; no need to append an extra empty one}
+                                write_data(ecode, outOBJ, ord4(@dummyBlock), (512 - (writeLoc mod 512)), count, Absolute, writeLoc);
+                            end;
+                        {$IFC DEBUG}
+                        writeln('Found EOF marker, bye!');
+                        {$ENDC}
+                        goto 999;
+                    end;
+                {It's a module name block, which appears right before a code block}
+                moduleNameHeader:
+                    begin
+                        {So read in the full module name block}
+                        read_data(ecode, inOBJ, ord4(@modName), 24, count, Absolute, fileLoc);
+                        writeln;
+                        {And print out the name of the segment and module that are about to follow this block}
+                        {We'll be packing this segment on the next iteration through the case statements}
+                        write('Processing segment ');
+                        for i := 1 to 8 do write(chr(modName.segName[i]));
+                        write(' in module ');
+                        for i := 1 to 8 do write(chr(modName.name[i]));
+                        writeln('...');
+                        {Write the module name header back out to the output file unchanged}
+                        write_data(ecode, outOBJ, ord4(@modName), 24, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's an endblock, which appears right after a code block}
+                endBlockHeader:
+                    begin
+                        {There's nothing special about an endblock; just write it straight back out to the outfile}
+                        read_data(ecode, inOBJ, ord4(@endBlk), 8, count, Absolute, fileLoc);
+                        {$IFC DEBUG}
+                        writeln('End block. Code size was ', endBlk.codeSize, '.');
+                        {$ENDC}
+                        write_data(ecode, outOBJ, ord4(@endBlk), 8, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's an entry point block}
+                {By the way, these only appear in intrinsic libraries, not executables}
+                {Entry point blocks aren't needed in packed object files, so we can just discard this and grab the next header}
+                {The entry points seem to only be used by the Linker, but the Linker only works with unpacked code anyway}
+                entryPointHeader:
+                    begin
+                        {$IFC DEBUG}
+                        writeln('Entry point block. NOT COPYING OVER TO OUTPUT!');
+                        {$ENDC}
+                        {read_data(ecode, inOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, fileLoc);
+                        write_data(ecode, outOBJ, ord4(UnpSegPtr), stdHeader.blockSize, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;}
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's a start address block}
+                {These only appear in executables, not intrinsic libs}
+                {Like the entry points, they seem to only be used by the linker, so we just discard them to save space in the packed outfile}
+                startAddressHeader:
+                    begin
+                        {$IFC DEBUG}
+                        writeln('Start address block. NOT COPYING OVER TO OUTPUT!');
+                        {$ENDC}
+                        {read_data(ecode, inOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, fileLoc);
+                        write_data(ecode, outOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;}
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's an unpacked code block}
+                {So we need to pack it}
+                unpackedCodeHeader:
+                    begin
+                        {Read the full block (can be up to 32K) into our unpacked code record in the dataseg}
+                        read_data(ecode, inOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, fileLoc);
+                        {And tell the user we're packing, before calling packCode}
+                        write('Packing...');
+                        packCode(ord4(unpSegPtr), ord4(packSegPtr));
+                        {Once we're done packing, tell them the original and pack sizes, and the size reduction}
+                        writeln('Original Size: ', unpSegPtr^.blockSize:5, ' Bytes');
+                        writeln('Packed Size: ', packSegPtr^.blockSize:5, ' Bytes');
+                        writeln('That''s a ', round(((1-(packSegPtr^.blockSize / unpSegPtr^.blockSize))*100)):2, '% size decrease!');
+                        {Now we've got to do some extra work}
+                        {The exec block and seg location block (if either are present) have fields that must be updated}
+                        {These fields are the packed size of the newly-packed segment}
+                        {And the address of the segment within our object code file}
+                        {So iterate through all of the 50 possible seg entries that could be present in the exec and segLoc blocks}
+                        {The 50 is just an arbitrary limit on our part; files can have up to 4096 segs but I don't want to deal with allocating more RAM}
+                        {The largest one I've seen, LisaGuide, is only 40-something, so we should be fine}
+                        for i := 1 to 50 do
+                            begin
+                                {And check if the current entry is the one that we just packed and need to update}
+                                if segLoc.segInfo[i].sizeUnpacked = unpSegPtr^.blockSize then
+                                    begin
+                                        {If so, update it}
+                                        segLoc.segInfo[i].sizePacked := packSegPtr^.blockSize;
+                                        segLoc.segInfo[i].fileLocation := writeLoc;
+                                    end;
+                                {And do the same for the jump table entry in the execBlock}
+                                if execBlock.JT[i].unpackedSize = unpSegPtr^.blockSize then
+                                    begin
+                                        execBlock.JT[i].segAddr := writeLoc;
+                                        execBlock.JT[i].packedSize := packSegPtr^.blockSize;
+                                    end;
+                            end;
+                        {Now write the newly-packed segment out to the outfile}
+                        write_data(ecode, outOBJ, ord4(packSegPtr), packSegPtr^.blockSize, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's an "old exec" block, meaning that the input file is from some ancient Lisa system}
+                {So tell the user that they shouldn't even be thinking about trying to pack this file, and exit}
+                oldExecHeader:
+                    begin
+                        writeln('ERROR: This is an old executable. How did you even find one of these??? Bye!');
+                        goto 999;
+                    end;
+                {It's a unit block}
+                {These are only found in intrinsic libraries, not executables}
+                {Each unit block holds info about one unit in this object file}
+                {And can also have some optional comments at the end, which are the interface section of the unit}
+                unitBlockHeader:
+                    begin
+                        {$IFC DEBUG}
+                        writeln('Unit block. STRIPPING ANY COMMENTS THAT MIGHT BE PRESENT!');
+                        {$ENDC}
+                        {Read the full unit block header into the dataseg (just used as temp storage)}
+                        read_data(ecode, inOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, fileLoc);
+                        {But set the block size to 30, effectively cutting off the comments at the end}
+                        unpSegPtr^.blockSize := 30;
+                        {And just write those first 30 bytes back out to the output file}
+                        write_data(ecode, outOBJ, ord4(unpSegPtr), 30, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's a library names block}
+                {These only appear in intrinsic units, not executables}
+                {And they hold the names of the libraries used}
+                {And it's another one of those things that we can just discard and not write to the output file}
+                libNamesHeader:
+                    begin
+                        {$IFC DEBUG}
+                        writeln('Library names block. NOT COPYING OVER TO OUTPUT!');
+                        {$ENDC}
+                        {read_data(ecode, inOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, fileLoc);
+                        write_data(ecode, outOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;}
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's a physical executable block}
+                {I'm not sure if physically-linked executables can even be packed, so give an error and quit if we find one}
+                {The only thing that's physically linked is SYSTEM.LLD, and it doesn't need to be packed anyway}
+                physExecHeader:
+                    begin
+                        writeln('ERROR: This program doesn''t work on physical executables. Bye!');
+                        goto 999;
+                    end;
+                {It's an executable block}
+                {As you might guess, this is only found in executables, not intrinsic library files}
+                {Holds info like the desired stack/heap sizes, memory addresses, and the jump table}
+                executableHeader:
+                    begin
+                        {$IFC DEBUG}
+                        writeln('Executable block.');
+                        {$ENDC}
+                        {Just copy the block straight from the infile to the outfile}
+                        read_data(ecode, inOBJ, ord4(@execBlock), stdHeader.blockSize, count, Absolute, fileLoc);
+                        write_data(ecode, outOBJ, ord4(@execBlock), stdHeader.blockSize, count, Absolute, writeLoc);
+                        {But also record its location in the outfile since we'll need to update it at the end}
+                        execLoc := writeLoc;
+                        writeLoc := writeLoc + count;
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's a version control block}
+                {Just specifies the min/max system versions that the object file will work with}
+                {The Workshop linker always sets these fields to zero}
+                {We copy it over, but it's pretty useless}
+                versionCtrlHeader:
+                    begin
+                        {$IFC DEBUG}
+                        writeln('Version control block.');
+                        {$ENDC}
+                        read_data(ecode, inOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, fileLoc);
+                        write_data(ecode, outOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's a segment table block}
+                {These are only found in intrinsic library files, not executables}
+                {The segtable is just a list of the segment names and segment numbers that appear in the file}
+                {Just copy it straight from input to output}
+                segTableHeader:
+                    begin
+                        {$IFC DEBUG}
+                        writeln('Segment table block.');
+                        {$ENDC}
+                        read_data(ecode, inOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, fileLoc);
+                        write_data(ecode, outOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's a unit table block}
+                {Basically identical to the segment table, but for units}
+                {Copy it straight across too}
+                unitTableHeader:
+                    begin
+                        {$IFC DEBUG}
+                        writeln('Unit table block.');
+                        {$ENDC}
+                        read_data(ecode, inOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, fileLoc);
+                        write_data(ecode, outOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's a segment location block}
+                {These are only found in intrinsic library files, not executables}
+                {This block has an entry for each segment, with some code addresses and packed sizes that we'll need to change later}
+                {But for now, copy it straight over to the output}
+                segLocationHeader:
+                    begin
+                        read_data(ecode, inOBJ, ord4(@segLoc), stdHeader.blockSize, count, Absolute, fileLoc);
+                        {$IFC DEBUG}
+                        writeln('Segment location block. There are ', segLoc.numSegs, ' segments in this block.');
+                        for i := 1 to segLoc.numSegs do
+                            begin
+                                write('Segment ', i, ': ');
+                                for j := 1 to 8 do write(chr(segLoc.segInfo[i].segName[j]));
+                                writeln;
+                                writeln('    System seg number is ', segLoc.segInfo[i].segNum, '. ');
+                                writeln('    Packed size is ', segLoc.segInfo[i].sizePacked, '. ');
+                                writeln('    Unpacked size is ', segLoc.segInfo[i].sizeUnpacked, '.');
+                            end;
+                        {$ENDC}
+                        write_data(ecode, outOBJ, ord4(@segLoc), stdHeader.blockSize, count, Absolute, writeLoc);
+                        {And record its location so we can go back and overwrite it later}
+                        segLocLoc := writeLoc;
+                        writeLoc := writeLoc + count;
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {It's a packed code block}
+                {If the input file is already packed, then we have nothing to do, so give an error and exit}
+                packedCodeHeader:
+                    begin
+                        writeln('ERROR: Your input code file seems to already be packed! Bye!');
+                        goto 999;
+                    end;
+                {It's a packtable block}
+                {This means the user gave us a packtable as our input "code" file}
+                {So give an error and exit}
+                packTableHeader:
+                    begin
+                        writeln('ERROR: Your input code file seems to be a packtable! Bye!');
+                        goto 999;
+                    end;
+                {It's an OS data block}
+                {I have no idea what the OS data even is, but there's a block for it}
+                {So we copy it straight over to the output file as-is}
+                osDataHeader:
+                    begin
+                        {$IFC DEBUG}
+                        writeln('OS data block.');
+                        {$ENDC}
+                        read_data(ecode, inOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, fileLoc);
+                        write_data(ecode, outOBJ, ord4(unpSegPtr), stdHeader.blockSize, count, Absolute, writeLoc);
+                        writeLoc := writeLoc + count;
+                        GetNextHeader(inOBJ, stdHeader, fileLoc);
+                    end;
+                {Any other block type is an unknown block}
+                {To make sure that we don't screw anything up, give an error and quit if we encounter any unknown blocks}
+                otherwise
+                    begin
+                        writeln('ERROR: Unknown block of type ', stdHeader.header, '. Bye!');
+                        goto 999;
+                    end;
+            end;
+        end;
+
+{We end up here whenever we've either successfully packed the entire file or exited because of an error}
+999:
+    {Close the dataseg and all 3 of our files}
+    close_dataseg(ecode, dataSegRef);
+    close_object(ecode, systemUnpack);
+    close_object(ecode, inOBJ);
+    close_object(ecode, outOBJ);
+    writeln;
+    {Then print how long the packing operation took using the startTime from earlier and the current Timer time}
+    writeln('Packing completed in ', round((Timer - startTime)/1000):3, ' seconds.');
+    {And of course we need a classic "That's all Folks!" to finish things up!}
+    writeln('That''s all Folks!');
+END.

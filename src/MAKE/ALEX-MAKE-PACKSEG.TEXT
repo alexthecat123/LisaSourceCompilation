@@ -1,0 +1,14 @@
+$EXEC
+{Compiles and links my newly-written version of PACKSEG}
+
+$SUBMIT BUILD/COMP(ALEX/PACKSEG)
+
+L{inker}ALEX/PACKSEG
+LIBHW/HWINTL
+IOSPASLIB
+IOSFPLIB
+         {No more input files}
+         {No listing file}
+ALEX/PACKSEG  {Output file}
+
+$ENDEXEC

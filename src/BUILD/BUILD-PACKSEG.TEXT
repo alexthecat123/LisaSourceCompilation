@@ -1,0 +1,25 @@
+$EXEC     {Pack an object file using my newly-written PACKSEG application}
+$
+${ %0 -- pathname of the file to pack}
+${ %1 -- (optional) pathname of the resulting packed file. Defaults to %0}
+${ %2 -- (optional) pathname of packtable.  Defaults to system.unpack}
+$
+$IF %0='' THEN
+   $WRITE 'File To Pack? '
+   $READLN %0
+   $IF %1='' THEN
+      $WRITE "Name For Packed File [<cr> For %0]? "
+      $READLN %1
+      $IF %2='' THEN
+         $WRITE 'Name Of Packtable [<cr> For SYSTEM.UNPACK]? '
+         $READLN %2
+      $ENDIF
+   $ENDIF
+$ENDIF
+$DEFAULT %1 TO %0
+$DEFAULT %2 TO 'SYSTEM.UNPACK'
+R{un}ALEX/PACKSEG
+%0                                      {input file}
+%2                                      {packtable}
+%1                                      {output file}
+$ENDEXEC

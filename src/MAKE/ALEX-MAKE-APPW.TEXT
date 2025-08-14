@@ -1,1 +1,34 @@
-$EXEC{Builds the Preferences Window(s) and installs it as tool #109.}$SUBMIT ALEX/ASM/APPW {Assemble all assembly language source files}$SUBMIT ALEX/COMP/APPW {Compile all Pascal source files}$SUBMIT ALEX/LINK/APPW {And link everything together}F{ilemgr}D{elete}~{T109~}PHRASEY{es}D{elete}~{T109~}buttonsY{es}D{elete}~{T109~}ObjY{es}Q{uit}            {Delete anything left over from prev build}R{un}APPW/BTNREAD {Process all the APPW buttons in BTNFILE into APPW/T11buttons}Y{es, show verbose output}F{ilemgr}C{opy}APPW/T11buttons~{T109~}buttonsC{opy}APPW/PREFERENCES.OBJ~{T109~}ObjQ{uit}R{un}Alert {Run the alert tool to process our phrase file}APPW/ALERTS.TEXT {Input alert file}APPW/T11 {Output file, the PHRASE part is added automatically}F{ilemgr}C{opy}APPW/T11PHRASE~{T109~}PHRASEY{es, replace}Q{uit}R{un}InstallTool{Installs app into LOS}Y{es, overwrite tool with same name}{Enter, because we want to install to this drive}109{Tool number}N{o, tool does not make documents}N{o, tool doesn't need special opening rectangle}New Preferences{Tool name}$ENDEXEC
+$EXEC
+{Builds the Preferences Window(s) and installs it as tool #11.}
+
+$SUBMIT ALEX/ASM/APPW {Assemble all assembly language source files}
+$SUBMIT ALEX/COMP/APPW {Compile all Pascal source files}
+$SUBMIT ALEX/LINK/APPW {And link everything together}
+
+F{ilemgr}D{elete}~{T11~}PHRASE
+Y{es}
+D{elete}~{T11~}buttons
+Y{es}
+D{elete}~{T11~}Obj
+Y{es}Q{uit}            {Delete anything left over from prev build}
+
+R{un}APPW/BTNREAD {Process all the APPW buttons in BTNFILE into APPW/T11buttons}
+Y{es, show verbose output}
+
+
+F{ilemgr}C{opy}APPW/T11buttons
+~{T11~}buttons
+C{opy}APPW/PREFERENCES.OBJ
+~{T11~}Obj
+Q{uit}
+
+R{un}Alert {Run the alert tool to process our phrase file}
+APPW/ALERTS.TEXT {Input alert file}
+APPW/T11 {Output file, the PHRASE part is added automatically}
+
+F{ilemgr}C{opy}APPW/T11PHRASE
+~{T11~}PHRASE
+Y{es, replace}Q{uit}
+
+$ENDEXEC
+

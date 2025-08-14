@@ -1,1 +1,38 @@
-$EXEC{Builds the calculator app and installs it as tool #100.}F{ilemgr}D{elete}APHP/HP.OBJY{es}D{elete}APHP/CALC.OBJY{es}D{elete}~{T100~}PHRASEY{es}D{elete}~{T100~}Obj    {Delete anything left over from prev compilation}Y{es}Q{uit}P{ascal Compile}APHP/HP.TEXT {Source File}             {No Listing File}APHP/HP.OBJ  {Output Object Code}L{inker}APHP/HP.OBJ {Calculator Object Code}IOSPASLIB.OBJ      {A bunch of libraries to link it with}SYS1LIB.OBJSYS2LIB.OBJPRLIB.OBJIOSFPLIB.OBJ                   {No more input files}                   {No Listing File}APHP/CALC.OBJ      {Output Executable}F{ilemgr}C{opy}APHP/CALC.OBJ~{T100~}Obj     {Copy our executable to a tool in the root dir called tool 100}Q{uit}R{un}Alert {Run the alert tool to process our phrase file}APHP/T12ALERT.TEXT {Input alert file}APHP/T12 {Output file, the PHRASE part is added automatically}F{ilemgr}C{opy}APHP/T12PHRASE~{T100~}PHRASEY{es, replace}Q{uit}R{un}InstallTool{Installs app into LOS}Y{es, overwrite tool with same name}{Enter, because we want to install to this drive}100{Tool number}N{o, tool doesn't make documents}N{o, tool doesn't need special opening rectangle}New Calculator{Tool name}$ENDEXEC
+$EXEC
+{Builds the calculator app and installs it as tool #12.}
+
+F{ilemgr}D{elete}APHP/HP.OBJ
+Y{es}
+D{elete}APHP/CALC.OBJ
+Y{es}
+D{elete}~{T12~}PHRASE
+Y{es}
+D{elete}~{T12~}Obj    {Delete anything left over from prev compilation}
+Y{es}Q{uit}
+
+P{ascal Compile}APHP/HP.TEXT {Source File}
+             {No Listing File}
+APHP/HP.OBJ  {Output Object Code}
+
+L{inker}APHP/HP.OBJ {Calculator Object Code}
+IOSPASLIB.OBJ      {A bunch of libraries to link it with}
+SYS1LIB.OBJ
+SYS2LIB.OBJ
+PRLIB.OBJ
+IOSFPLIB.OBJ
+                   {No more input files}
+                   {No Listing File}
+APHP/CALC.OBJ      {Output Executable}
+F{ilemgr}C{opy}APHP/CALC.OBJ
+~{T12~}Obj     {Copy our executable to a tool in the root dir called tool 12}
+Q{uit}
+
+R{un}Alert {Run the alert tool to process our phrase file}
+APHP/T12ALERT.TEXT {Input alert file}
+APHP/T12 {Output file, the PHRASE part is added automatically}
+
+F{ilemgr}C{opy}APHP/T12PHRASE
+~{T12~}PHRASE
+Y{es, replace}Q{uit}
+
+$ENDEXEC

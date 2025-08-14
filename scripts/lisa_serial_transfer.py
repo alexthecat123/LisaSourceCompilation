@@ -113,7 +113,9 @@ def send_single_file(file_path, filename):
                 if byte == b'\r': # Check for \r\n line endings, and convert them to just \r.
                     byte = source_file.read(1) # Read the next byte to see if it's a \n.
                     if byte != b'\n': # If it's not a \n, we need to rewind the file by one byte, so we can send the \r again.
-                        source_file.seek(-1, os.SEEK_CUR)
+                        if byte:
+                            source_file.seek(-1, os.SEEK_CUR)
+                        byte = b'\r'
                     else: # If it is a \n, we can just continue.
                         bytes_sent += 1
                         byte = b'\r'
@@ -122,53 +124,6 @@ def send_single_file(file_path, filename):
                 if byte == b'\r': # If we encounter a \r, increment the line count.
                     line_count += 1
                 lisa.write(byte) # And now send the byte to the Lisa.
-
-                # The following commented-out code was from when we copying data from the -CONSOLE (which gives an echo).
-                # Now we're copying from -KEYBOARD, which does not. So there's no need/no way to validate any echos.
-                '''echo = lisa.read() # Read the echoed byte from the Lisa.
-                timeout_start = time.time() # And start a timer to see if we get an echo back in time.
-                while echo != byte: # If the echoed byte doesn't match the sent byte, keep reading until it does.
-                    echo = lisa.read()
-                    if time.time() - timeout_start > echo_timeout: # If the echo doesn't match after the timeout, we might have a problem.
-                        if not echo and byte.decode('mac-roman').isprintable(): # If the echo is empty (for a printable byte that we expect to get an echo from), the Lisa probably needs a reboot.
-                            echo_counter += 1 # Increment the empty echo counter.
-                            if echo_counter < empty_echo_threshold: # If we get too many empty echoes, make the user reboot, else try again.
-                                print('\n')
-                                print(f'No echo received from the Lisa, retry #{echo_counter} of {empty_echo_threshold}.')
-                                break
-                            print('\n')
-                            input('ERROR: The Lisa did not respond with an echo! Go ahead and reboot it, run the EXEC file ALEX/TRANSFER.TEXT again, and hit RETURN on this computer to try sending this file again...')
-                            print('\n')
-                            print_progress_bar(filename, total_files - len(path_list), total_files, source_file.tell(), os.path.getsize(file_path), size, start_time)
-                            log_file.write('\nERROR: The Lisa did not respond with an echo! Retrying transfer after reboot...')
-                            log_file.flush()
-                            errors = 0 # Reset all our transfer variables.
-                            echo_counter = 0
-                            line_count = 1
-                            bytes_sent = prev_sent
-                            source_file.seek(0) # And rewind the file to the beginning.
-                            log_file.write(f'\n{filename} Again ({total_files - len(path_list)}/{total_files}): ') # Put the filename in the logfile again.
-                            log_file.flush()
-                            lisa.write(b'qqn')
-                            lisa.read(200) # Wait for the Lisa to catch up again.
-                            lisa.write(b'rcopy\r>' + filename.encode('mac-roman') + b'\r') # Tell the Lisa to r{un} the copy tool, giving it the Lisa-formatted filename that we want to save to.
-                            lisa.read(200) # Wait for the Lisa to catch up by reading some bytes.
-                            break
-                        elif echo or (not echo and not byte.decode('mac-roman').isprintable()): # If we got an echo, but it doesn't match the sent byte, or we don't get an echo for a non-printable byte, we might have a mismatch.
-                            errors += 1 # Increment the error count.
-                            print('\n')
-                            # And show the user a warning message.
-                            print(f'WARNING: Echo was supposed to be "{byte.decode("mac-roman") if byte != b'\r' and byte != '\n' else '[newline]'}", but was actually "{echo.decode("mac-roman") if echo != b'\r' and echo != '\n' else '[newline]'}" on line {line_count}.')
-                            if not byte.decode('mac-roman').isprintable(): # If the byte isn't printable, then it might not be a problem.
-                                print('This happened on an unprintable character, so it might not be a problem.')
-                            print('\n')
-                            # Log it to the log file too.
-                            log_file.write(f'\nWARNING: Echo was supposed to be "{byte.decode("mac-roman") if byte != b'\r' and byte != '\n' else '[newline]'}", but was actually "{echo.decode("mac-roman") if echo != b'\r' and echo != '\n' else '[newline]'}" on line {line_count}. ')
-                            if not byte.decode('mac-roman').isprintable(): # If the byte isn't printable, then it might not be a problem.
-                                log_file.write('This happened on an unprintable character, so it might not be a problem. ')
-                            log_file.flush()
-                            break'''
-
                 # Update the progress bar after each byte is sent.
                 print_progress_bar(filename, total_files - len(path_list), total_files, source_file.tell(), os.path.getsize(file_path), size, start_time, False)
                 # And print the byte to the terminal so the user can see what's going on.

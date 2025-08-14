@@ -15,11 +15,13 @@ $SUBMIT ALEX/MAKE/TKALERT {The 1984 version of the alert generator tool}
 $DOIT
 $SUBMIT ALEX/MAKE/LIBS_PARTIAL {All the system libraries, other than the ones above}
 $DOIT
+$SUBMIT ALEX/MAKE/PACKSEG {Build the PACKSEG tool}
+$DOIT
 $SUBMIT ALEX/MAKE/FULLOS {The core OS, bootloaders, and drivers}
 $DOIT
 $SUBMIT ALEX/MAKE/INSTALLER(1) {The installer, but not the install disks}
 $DOIT
-{$SUBMIT ALEX/MAKE/APIM(1) LisaGuide, but don't make the floppy itself}
-{$DOIT}
+$SUBMIT ALEX/MAKE/APIM(1) {LisaGuide, but don't make the floppy itself}
+$DOIT
 
 $ENDEXEC
